@@ -34,8 +34,10 @@ public import Decomp.Region.Sp1
 public import Decomp.Sp1.Syscalls
 public import Decomp.Sp1.HintRead
 public import Decomp.Reject
+public import Decomp.Refine
 public import Decomp.Examples.Sp1Ecall
 public import Decomp.Examples.Countdown
 public import Decomp.Examples.CountdownMachine
 public import Decomp.Examples.FindIndex
 public import Decomp.Examples.FindIndexMachine
+public import Decomp.Examples.FindIndexRefine
