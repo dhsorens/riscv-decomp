@@ -323,11 +323,13 @@ Three things change, and it is worth being explicit about them:
   alignment loop has already stored a byte and decremented its counter before
   it decides to leave -- so the exit obligation needs the same domain facts as
   the continue obligation. That is why `RunsTo.exit` takes `side x`.
-* **There is one machine exit label, not one per `inr`.** `cpsTotal` has a
-  single exit address, so a region with two machine exits must converge before
-  the region ends -- which is what the compiler does anyway (`memcpy`'s
-  mid-body `BEQ` and its bottom `JAL` both land on `0x7801b520`). Which exit
-  was taken is recorded in the returned `β`, not in the label.
+* **The machine exit label may depend on the output.** `cpsTotal` has a single
+  exit address, but the loop rule's conclusion is about one derivation
+  `RunsTo r side n x y`, and `y` says which exit was taken -- so the label can
+  be `exitOf y` (`cpsTotal_loopB_exits`), and two `inr` branches may land on
+  two different addresses with no join between them. `cpsTotal_loopB` is the
+  constant-label instance, which is all a compiler's own output ever needs
+  (`memcpy`'s mid-body `BEQ` and its bottom `JAL` both land on `0x7801b520`).
 -/
 
 /-- One extracted loop region whose body may return instead of continuing.

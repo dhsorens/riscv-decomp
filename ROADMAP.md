@@ -26,7 +26,7 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 480
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 485
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -161,17 +161,34 @@ a second function nobody wrote by hand.
 *Known risk:* computed branches defeat CFG recovery. Plan hand-written
 `cpsNBranchWithin` certificates at indirect-jump sites.
 
-### 7. Two genuinely divergent exits cannot be stated · design question
+### 7. Two genuinely divergent exits · resolved
 
-`cpsTotal` has a single exit address, so `cpsTotal_loopB` requires every `inr`
-branch to reach one machine label, and the region must include whatever the
-compiler put between the exits and the join. That is what compilers do, and it
-is why the restriction has not bitten — but a region whose exits do not converge
-has no statement here. The shape would be a total two-exit judgement, the
-`cpsTotal` analogue of `cpsBranch`.
+`cpsTotal` has a single exit address, and `cpsTotal_loopB` fixed it before the
+body ran, so every `inr` branch had to reach one label. That was an artifact of
+the order of quantification, not of the judgement: the rule's conclusion is
+about one derivation `RunsTo r side n x y`, and `y` says which exit was taken,
+so the label may be `exitOf y`. `cpsTotal_loopB_exits` is that rule, with the
+same four-line proof; `cpsTotal_loopB` is now its constant-label instance.
 
-*Acceptance:* either the judgement, or a written argument that the convergence
-requirement is the right one.
+Decision recorded so it is not rebuilt: a two-exit total judgement with
+existential arms (the `cpsTotal` analogue of `cpsBranch`, derived from the loop
+rule for a caller holding only `TerminatesB`) was built and withdrawn. Its arms
+could only say "some output tagged this way reached this label", which is not
+the form this library wants; the exit-per-output loop rule is the answer, and a
+caller who wants pinned arms takes the derivation.
+
+Consumer: `FindIndex` with the region ending before the `JAL` — `find_found_div`
+to `base + 16`, `find_exhausted_div` to `base + 12`, nothing joining them. The
+`JAL` stays **resident** in `cr` (the four residency lemmas are stated over the
+four-instruction program) and is never executed; a three-instruction `cr` would
+be the stricter test of "nothing between them in the region" and has not been
+done. `Cert` still has one `exit_`; a certificate for divergent exits would
+carry `exit_ : β → Word`, and nothing has asked.
+
+*Acceptance (met):* either the judgement, or a written argument that the
+convergence requirement is the right one. The argument above — the requirement
+was never the machine's — closes the item, with `cpsTotal_loopB_exits` as the
+rule.
 
 ### 8. `COMMIT` is under-observed · upstream
 
