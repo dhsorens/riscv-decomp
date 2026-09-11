@@ -182,6 +182,28 @@ region's entry is the guest's own entry. The `memset` tail loop this rule was
 first driven against used to sequence one unrolled body pass in front of
 `cpsTotal_loop` to get that effect; it does not any more. -/
 
+/-- **The loop rule with an exit label per output.** The pass that leaves lands
+    on `exitOf y`, a label chosen by the value the body returned, so two `inr`
+    branches may reach two different addresses with nothing between them in
+    the region. `cpsTotal_loopB` below is the constant-`exitOf` instance and is
+    the form to read first; this is the general one, kept general because the
+    proof is identical (see "Exits that do not converge" below).
+
+    `FindIndexMachine.lean`'s `find_found_div` / `find_exhausted_div` drive it
+    with the join instruction cut off the region. -/
+theorem cpsTotal_loopB_exits {st : Stepper} {r : RecB α β} {side : α → Prop}
+    {entry : Word} {exitOf : β → Word} {cr : CodeReq}
+    {I : α → Assertion} {Q : β → Assertion} {nC nE : Nat}
+    (hCont : ∀ x x', r.body x = .inl x' → side x →
+      cpsWithin st nC entry entry cr (I x) (I x'))
+    (hExit : ∀ x y, r.body x = .inr y → side x →
+      cpsWithin st nE entry (exitOf y) cr (I x) (Q y))
+    {n : Nat} {x : α} {y : β} (h : RunsTo r side n x y) :
+    cpsTotal st entry (exitOf y) cr (I x) (Q y) := by
+  induction h with
+  | exit hb hs => exact cpsTotal_of_cpsWithin (hExit _ _ hb hs)
+  | iter hb hs _ ih => exact cpsWithin_seq_cpsTotal_same_cr (hCont _ _ hb hs) ih
+
 /-- **The loop rule for a body that may return.** No step bound, no variant,
     and no assumption about where in the body the exit is.
 
@@ -189,8 +211,9 @@ first driven against used to sequence one unrolled body pass in front of
     * `hCont` is a full pass that comes back: entry to entry.
     * `hExit` is a pass that leaves: entry to `exit_`. A region with several
       machine exits proves this obligation once per `inr` branch of `body`, and
-      they must all reach the same `exit_` -- see `Tailrec.lean`'s note on why
-      that is the compiler's own behaviour rather than a restriction.
+      they must all reach the same `exit_` -- the compiler's own behaviour, and
+      when it is not, `cpsTotal_loopB_exits` above lets the label depend on
+      `y`.
     * `side` is handed to *both*, unlike `cpsTotal_loop`, whose header-false
       obligation cannot have it. Here the body runs on the way out, so it
       needs the same domain facts.
@@ -205,10 +228,54 @@ theorem cpsTotal_loopB {st : Stepper} {r : RecB α β} {side : α → Prop}
     (hExit : ∀ x y, r.body x = .inr y → side x →
       cpsWithin st nE entry exit_ cr (I x) (Q y))
     {n : Nat} {x : α} {y : β} (h : RunsTo r side n x y) :
-    cpsTotal st entry exit_ cr (I x) (Q y) := by
-  induction h with
-  | exit hb hs => exact cpsTotal_of_cpsWithin (hExit _ _ hb hs)
-  | iter hb hs _ ih => exact cpsWithin_seq_cpsTotal_same_cr (hCont _ _ hb hs) ih
+    cpsTotal st entry exit_ cr (I x) (Q y) :=
+  cpsTotal_loopB_exits (exitOf := fun _ => exit_) hCont hExit h
+
+/-! ## Exits that do not converge
+
+`cpsTotal` has one exit address, and fixing it before the body is run forces
+every `inr` branch to reach the same label -- the "convergence requirement"
+(`ROADMAP.md` item 7). It is an artifact of the *order of quantification*, not
+of the judgement. The rule's conclusion is about a *particular* derivation
+`RunsTo r side n x y`, and `y` says which exit was taken; so the exit address
+may depend on `y`, and once it does no join is needed. `cpsTotal_loopB_exits`
+above is that rule, `cpsTotal_loopB` is its instance at a constant `exitOf`,
+and the proof is the same four lines.
+
+A caller that does not know `y` -- one holding `TerminatesB` rather than a
+derivation -- gets a two-exit total judgement from it, `cpsTotalBranch`
+(`Decomp/Triple.lean`), with the arm postconditions existentially quantified
+over the outputs that reach each label (`cpsTotalBranch_of_loopB`). That is the
+`cpsTotal` analogue of `cpsBranch` the roadmap asked about, and it is derived,
+not primitive. -/
+
+/-- The two-exit total judgement, from a loop whose outputs are sorted onto two
+    labels by `tag`. For a caller with only `TerminatesB`: the run reaches
+    `exit_t` with *some* output tagged `true`, or `exit_f` with some output
+    tagged `false`, and `Q` of that output holds. -/
+theorem cpsTotalBranch_of_loopB {st : Stepper} {r : RecB α β} {side : α → Prop}
+    {entry exit_t exit_f : Word} {cr : CodeReq} {tag : β → Bool}
+    {I : α → Assertion} {Q : β → Assertion} {nC nE : Nat}
+    (hCont : ∀ x x', r.body x = .inl x' → side x →
+      cpsWithin st nC entry entry cr (I x) (I x'))
+    (hExit : ∀ x y, r.body x = .inr y → side x →
+      cpsWithin st nE entry (if tag y then exit_t else exit_f) cr (I x) (Q y))
+    {x : α} (h : TerminatesB r side x) :
+    cpsTotalBranch st entry cr (I x)
+      exit_t (fun hp => ∃ y, tag y = true ∧ Q y hp)
+      exit_f (fun hp => ∃ y, tag y = false ∧ Q y hp) := by
+  obtain ⟨n, y, ht⟩ := h
+  have hrun := cpsTotal_loopB_exits (exitOf := fun y => if tag y then exit_t else exit_f)
+    hCont hExit ht
+  cases htag : tag y with
+  | true =>
+    rw [htag, if_pos rfl] at hrun
+    exact cpsTotalBranch_of_cpsTotal_t (cpsTotal_weaken (fun _ hp => hp)
+      (fun _ hq => ⟨y, htag, hq⟩) hrun)
+  | false =>
+    rw [htag, if_neg Bool.false_ne_true] at hrun
+    exact cpsTotalBranch_of_cpsTotal_f (cpsTotal_weaken (fun _ hp => hp)
+      (fun _ hq => ⟨y, htag, hq⟩) hrun)
 
 /-- The returning-body rule against a closed-form function. `heq` is the
     ordinary-induction obligation: whatever the region returns, it is `f x`. -/

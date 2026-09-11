@@ -292,10 +292,12 @@ file as the plan.
   `TerminatesIn.exit`, `RunsTo.exit` takes `side x` — the body *runs* on
   the way out. So a `side` that was fine for `cpsTotal_loop` may need a
   conjunct (`0 < m`, typically) before it will drive `cpsTotal_loopB`.
-- **Every `inr` branch must reach the same machine label.** `cpsTotal`
-  has one exit address. Two machine exits are fine — record which one in
-  the returned `β` — but the region has to include whatever the compiler
-  put between them and the join (in `memcpy`, a `JAL`).
+- **Two `inr` branches need not reach the same machine label.**
+  `cpsTotal_loopB` fixes one `exit_`, so with it the region must include
+  whatever the compiler put between the exits and the join (in `memcpy`,
+  a `JAL`). `cpsTotal_loopB_exits` takes `exitOf : β → Word` instead and
+  needs no join; use it when the exits genuinely diverge, and
+  `cpsTotalBranch_of_loopB` when the caller has only `TerminatesB`.
 - **The obligations are quantified over *every* abstract state, not the
   reachable ones.** Each conjunct of `side` is usually load-bearing for
   exactly one obligation off the reachable path; if an obligation looks

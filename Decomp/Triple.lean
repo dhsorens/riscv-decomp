@@ -326,6 +326,82 @@ theorem cpsBranch_merge_total_same_cr {n : Nat} {entry l_t l_f exit_ : Word}
   · obtain ⟨k2, s2, hstep2, hpc2, hR⟩ := h_f F hF s1 hinv' hcr' hQ_f hpc_f
     exact ⟨k1 + k2, s2, Stepper.iter_add_eq hstep1 hstep2, hpc2, hR⟩
 
+/-! ### The two-exit total judgement
+
+`cpsBranch` with the bound deleted, exactly as `cpsTotal` is `cpsWithin` with
+the bound deleted. It is here for the caller who knows a region leaves by one
+of two labels but not which -- the loop rule `cpsTotal_loopB_exits` produces a
+*single* exit whenever the derivation is in hand, so this is the derived,
+weaker form (`cpsTotalBranch_of_loopB`). -/
+
+/-- Total two-exit branch: from `entry`, eventually reach `exit_t` with `Q_t` or
+    `exit_f` with `Q_f`. -/
+def cpsTotalBranch (st : Stepper) (entry : Word) (cr : CodeReq) (P : Assertion)
+    (exit_t : Word) (Q_t : Assertion) (exit_f : Word) (Q_f : Assertion) : Prop :=
+  ∀ R : Assertion, R.pcFree → ∀ s, st.inv s → cr.SatisfiedBy s → (P ** R).holdsFor s →
+    s.pc = entry →
+    ∃ k s', st.iter k s = some s' ∧
+      ((s'.pc = exit_t ∧ (Q_t ** R).holdsFor s') ∨
+       (s'.pc = exit_f ∧ (Q_f ** R).holdsFor s'))
+
+theorem cpsTotalBranch_of_cpsBranch {n : Nat} {entry : Word} {cr : CodeReq} {P : Assertion}
+    {exit_t : Word} {Q_t : Assertion} {exit_f : Word} {Q_f : Assertion}
+    (h : cpsBranch st n entry cr P exit_t Q_t exit_f Q_f) :
+    cpsTotalBranch st entry cr P exit_t Q_t exit_f Q_f := by
+  intro R hR s hinv hcr hPR hpc
+  obtain ⟨k, _, s', hstep, hcase⟩ := h R hR s hinv hcr hPR hpc
+  exact ⟨k, s', hstep, hcase⟩
+
+/-- A total triple to the first label is a two-exit judgement whose second arm
+    is never taken. -/
+theorem cpsTotalBranch_of_cpsTotal_t {entry : Word} {cr : CodeReq} {P : Assertion}
+    {exit_t : Word} {Q_t : Assertion} {exit_f : Word} {Q_f : Assertion}
+    (h : cpsTotal st entry exit_t cr P Q_t) :
+    cpsTotalBranch st entry cr P exit_t Q_t exit_f Q_f := by
+  intro R hR s hinv hcr hPR hpc
+  obtain ⟨k, s', hstep, hpc', hQ⟩ := h R hR s hinv hcr hPR hpc
+  exact ⟨k, s', hstep, Or.inl ⟨hpc', hQ⟩⟩
+
+theorem cpsTotalBranch_of_cpsTotal_f {entry : Word} {cr : CodeReq} {P : Assertion}
+    {exit_t : Word} {Q_t : Assertion} {exit_f : Word} {Q_f : Assertion}
+    (h : cpsTotal st entry exit_f cr P Q_f) :
+    cpsTotalBranch st entry cr P exit_t Q_t exit_f Q_f := by
+  intro R hR s hinv hcr hPR hpc
+  obtain ⟨k, s', hstep, hpc', hQ⟩ := h R hR s hinv hcr hPR hpc
+  exact ⟨k, s', hstep, Or.inr ⟨hpc', hQ⟩⟩
+
+theorem cpsTotalBranch_weaken {entry : Word} {cr : CodeReq}
+    {P P' : Assertion} {exit_t : Word} {Q_t Q_t' : Assertion}
+    {exit_f : Word} {Q_f Q_f' : Assertion}
+    (hpre : ∀ h, P' h → P h)
+    (hpost_t : ∀ h, Q_t h → Q_t' h) (hpost_f : ∀ h, Q_f h → Q_f' h)
+    (h : cpsTotalBranch st entry cr P exit_t Q_t exit_f Q_f) :
+    cpsTotalBranch st entry cr P' exit_t Q_t' exit_f Q_f' := by
+  intro R hR s hinv hcr hP'R hpc
+  obtain ⟨k, s', hstep, hcase⟩ := h R hR s hinv hcr (holdsFor_mono hpre hP'R) hpc
+  refine ⟨k, s', hstep, ?_⟩
+  rcases hcase with ⟨hpc', hQ⟩ | ⟨hpc', hQ⟩
+  · exact Or.inl ⟨hpc', holdsFor_mono hpost_t hQ⟩
+  · exact Or.inr ⟨hpc', holdsFor_mono hpost_f hQ⟩
+
+/-- The join rule for the total two-exit judgement: both arms continue to a
+    common exit. -/
+theorem cpsTotalBranch_merge_same_cr {entry l_t l_f exit_ : Word}
+    {cr : CodeReq} {P Q_t Q_f R : Assertion}
+    (hbr : cpsTotalBranch st entry cr P l_t Q_t l_f Q_f)
+    (h_t : cpsTotal st l_t exit_ cr Q_t R)
+    (h_f : cpsTotal st l_f exit_ cr Q_f R) :
+    cpsTotal st entry exit_ cr P R := by
+  intro F hF s hinv hcr hPF hpc
+  obtain ⟨k1, s1, hstep1, hcase⟩ := hbr F hF s hinv hcr hPF hpc
+  have hcr' := Stepper.satisfiedBy_iter hstep1 hcr
+  have hinv' := Stepper.inv_iter hinv hstep1
+  rcases hcase with ⟨hpc_t, hQ_t⟩ | ⟨hpc_f, hQ_f⟩
+  · obtain ⟨k2, s2, hstep2, hpc2, hR⟩ := h_t F hF s1 hinv' hcr' hQ_t hpc_t
+    exact ⟨k1 + k2, s2, Stepper.iter_add_eq hstep1 hstep2, hpc2, hR⟩
+  · obtain ⟨k2, s2, hstep2, hpc2, hR⟩ := h_f F hF s1 hinv' hcr' hQ_f hpc_f
+    exact ⟨k1 + k2, s2, Stepper.iter_add_eq hstep1 hstep2, hpc2, hR⟩
+
 /-! ## Reading a branch leaf's post through a left frame
 
 A branch leaf reports the guard it took as a pure conjunct at the end of its

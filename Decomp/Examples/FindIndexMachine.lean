@@ -338,4 +338,86 @@ example (base : Word) {stop e : Nat} (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) :
 example (base : Word) {stop e : Nat} (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) :
     (cert (Backend.plainAgree .sp1) base hstop he).pre = TerminatesB (find stop e) side := rfl
 
+/-! ## The same loop with the join cut off: two exits, two labels
+
+`cpsTotal_loopB_exits` lets the exit label depend on the output. Read the
+region as the first three instructions only -- the `JAL` stays resident in
+`cr` but is never executed -- and exit A is `base + 16`, exit B is
+`base + 12`, with nothing joining them. The obligations are the ones above
+minus `jal_join`, and the continue pass is unchanged. This is the consumer for
+`ROADMAP.md` item 7's answer: the convergence requirement was never a property
+of the machine, only of quantifying the exit before the output. -/
+
+/-- The label each exit lands on when the region ends before the `JAL`. -/
+def exitOf (base : Word) : Res → Word
+  | .found _ => base + 16
+  | .exhausted => base + 12
+
+/-- Which label an output reaches, as a `Bool`, for the two-exit judgement. -/
+def tag : Res → Bool
+  | .found _ => true
+  | .exhausted => false
+
+theorem exitOf_eq_ite (base : Word) (y : Res) :
+    exitOf base y = if tag y then base + 16 else base + 12 := by
+  cases y <;> rfl
+
+/-- The exit pass without the `JAL`: exit A in one step, exit B in three, each
+    to its own label. -/
+theorem exit_div (hst : st.PlainAgree) (base : Word) {stop e : Nat}
+    (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) :
+    ∀ i y, (find stop e).body i = .inr y → side i →
+      cpsWithin st 3 base (exitOf base y) (cr base) (I stop e i) (Q stop e y) := by
+  intro i y hb hs
+  have hs' : i + 1 < 2 ^ 64 := hs
+  by_cases h1 : i = stop
+  · rw [body_found h1] at hb
+    cases Sum.inr.inj hb
+    exact cpsWithin_mono (by omega) (beq_taken hst base hstop (by omega) h1)
+  by_cases h2 : i + 1 = e
+  · rw [body_exhausted h1 h2] at hb
+    cases Sum.inr.inj hb
+    show cpsWithin st 3 base (base + 12) (cr base) (I stop e i) (I stop e e)
+    rw [show I stop e e = I stop e (i + 1) by rw [h2]]
+    exact cpsWithin_seq_same_cr (beq_notTaken hst base hstop (by omega) h1)
+      (cpsWithin_seq_same_cr (addi_step hst base i) (bne_notTaken hst base he hs' h2))
+  rw [body_cont h1 h2] at hb
+  exact absurd hb (by simp)
+
+/-- **Exit A, to its own label.** Same statement as `find_found`; the region no
+    longer contains the join. -/
+theorem find_found_div (b : Backend) (base : Word) {stop e i : Nat}
+    (hse : stop < e) (he : e < 2 ^ 64) (hi : i ≤ stop) :
+    cpsTotalOn b base (base + 16) (cr base) (I stop e i) (I stop e stop) :=
+  cpsTotal_loopB_exits (exitOf := exitOf base)
+    (cont (Backend.plainAgree b) base (by omega) he)
+    (exit_div (Backend.plainAgree b) base (by omega) he)
+    (runsTo_found hse he (stop - i) i (by omega))
+
+/-- **Exit B, to a different label**: `base + 12`, where `find_exhausted` had
+    to run on to `base + 16` through the `JAL`. -/
+theorem find_exhausted_div (b : Backend) (base : Word) {stop e i : Nat}
+    (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) (hi : i < e)
+    (hno : ∀ j, i ≤ j → j < e → j ≠ stop) :
+    cpsTotalOn b base (base + 12) (cr base) (I stop e i) (I stop e e) :=
+  cpsTotal_loopB_exits (exitOf := exitOf base)
+    (cont (Backend.plainAgree b) base hstop he)
+    (exit_div (Backend.plainAgree b) base hstop he)
+    (runsTo_exhausted he (e - 1 - i) i (by omega) hno)
+
+/-- The two-exit total judgement, for a caller who knows only that the loop
+    terminates: it reaches `base + 16` having found `stop`, or `base + 12`
+    having run out. -/
+theorem find_branch (b : Backend) (base : Word) {stop e i : Nat}
+    (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) (h : TerminatesB (find stop e) side i) :
+    cpsTotalBranch (Backend.stepper b) base (cr base) (I stop e i)
+      (base + 16) (fun hp => ∃ y, tag y = true ∧ Q stop e y hp)
+      (base + 12) (fun hp => ∃ y, tag y = false ∧ Q stop e y hp) :=
+  cpsTotalBranch_of_loopB (tag := tag)
+    (cont (Backend.plainAgree b) base hstop he)
+    (fun i y hb hs => by
+      rw [← exitOf_eq_ite]
+      exact exit_div (Backend.plainAgree b) base hstop he i y hb hs)
+    h
+
 end Decomp.Examples.FindIndex
