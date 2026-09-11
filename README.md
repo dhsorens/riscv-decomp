@@ -16,7 +16,7 @@ it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
 live.
 
 ```
-lake build            # 96 jobs, zero warnings
+lake build            # 97 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -25,7 +25,7 @@ scripts/check-forbidden-tactics.sh
 
 | Module | What it is |
 | --- | --- |
-| `Decomp.Upstream` | The single public-import hub for `riscv-zkvm`: re-exports the module-system contents of its two legacy aggregators. (The only other mentions of upstream are private `meta import`s where a `#guard` runs an upstream definition.) |
+| `Decomp.Upstream` | The single public-import hub for `riscv-zkvm`: re-exports the module-system contents of its two legacy aggregators. (The only other *imports* of upstream are private `meta import`s where a `#guard` runs an upstream definition; `open RiscvZkvm.Rv64` is a namespace, not an import.) |
 | `Decomp.Stepper` | The two-field interface a backend owes: `next`, and "execution never rewrites code". Everything below is stated over it, so ZisK, SP1 and any future backend instantiate rather than fork. |
 | `Decomp.Triple` | The judgements: `cpsWithin` (bounded), `cpsTotal` (Myreen's `∃k`), `cpsBranch`, `cpsHalt`, `cpsSyscallHalt`. 30-odd structural rules — frame, sequence, weaken, extend-code — restated over a `Stepper`. |
 | `Decomp.Tailrec` | Conditional termination as an *inductive*, so the least fixpoint is termination and Lean's generated `.rec` is TR-765's derived induction principle. Two shapes: `Rec` (header-guarded) and `RecB` (`body : α → α ⊕ β`, for a body that may return). |
@@ -36,15 +36,15 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
 | `Decomp.Extract.CFG` | The extractor's first step, computable and untrusted: basic blocks, loops, exits, and which loop rule each loop wants — including whether its exits converge through the compiler's pure-jump blocks. Pinned by `#guard` to the two hand-proved programs. |
-| `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, and `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec. |
-| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; and the SP1-vs-ZisK ecall regression. |
+| `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec, and `Cert.Refines.seq` shows `Cert.seq` refines `Nres.bind`. |
+| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; the two glued back to back (`CountdownThenFind`) and refined against a `bind` of two specs; and the SP1-vs-ZisK ecall regression. |
 
 The L3 layer's abstract half is a separate library, `DecompRefine`, which imports nothing from `Rv64` or `Decomp`:
 
 | Module | What it is |
 | --- | --- |
 | `DecompRefine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
-| `DecompRefine.Examples.Search` | A linear-search specification and its abstract-correctness theorem, with no machine in sight. |
+| `DecompRefine.Examples.Search` | A linear-search specification, a countdown specification, their `bind`, and the abstract-correctness theorems, with no machine in sight. |
 
 ## Why no fuel
 

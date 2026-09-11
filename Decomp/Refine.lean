@@ -67,6 +67,30 @@ theorem Cert.Refines.trans {c : Cert st α β} {spec₁ : α → Nres γ} {R₁ 
     c.Refines spec₂ (Nres.relComp R₁ R₂) :=
   fun x hx => Nres.refine_trans (h₁ x hx) (h₂ x hx)
 
+/-- **Sequencing refines `bind`.** If `c₁` refines `spec₁` and, on every output
+    `c₁` can produce and every `R₁`-related abstract result, `c₂` refines the
+    continuation, then `c₁.seq c₂` refines `bind spec₁ spec₂`. This is
+    `Nres.bind_refine` at the certificate level -- the two `seq`s line up:
+    `Cert.seq`'s side condition is `c₁.pre x ∧ c₂.pre (c₁.fn x)`, and
+    `bind_refine` asks about the continuation only at results of the first
+    spec, which for `ret (c₁.fn x)` is exactly `c₁.fn x`. -/
+theorem Cert.Refines.seq {c₁ : Cert st α β} {c₂ : Cert st β γ}
+    {hmid : c₁.exit_ = c₂.entry} {hcr : c₁.cr = c₂.cr}
+    {hlink : ∀ y hp, c₁.post y hp → c₂.couple y hp}
+    {δ : Type w} {ε : Type w} {spec₁ : α → Nres δ} {R₁ : β → δ → Prop}
+    {spec₂ : δ → Nres ε} {R₂ : γ → ε → Prop}
+    (h₁ : c₁.Refines spec₁ R₁)
+    (h₂ : ∀ y z, R₁ y z → c₂.pre y → Nres.ret (c₂.fn y) ≤ Nres.conc R₂ (spec₂ z)) :
+    (c₁.seq c₂ hmid hcr hlink).Refines (fun x => Nres.bind (spec₁ x) spec₂) R₂ := by
+  intro x hx
+  obtain ⟨hx₁, hx₂⟩ := hx
+  show Nres.ret (c₂.fn (c₁.fn x)) ≤ _
+  rw [← Nres.bind_ret (c₁.fn x) (fun y => Nres.ret (c₂.fn y))]
+  refine Nres.bind_refine (h₁ x hx₁) (fun y z hy hR => ?_)
+  have hy' : y = c₁.fn x := hy
+  subst hy'
+  exact h₂ _ z hR hx₂
+
 /-- Weakening the relation. -/
 theorem Cert.Refines.mono {c : Cert st α β} {spec : α → Nres γ} {R R' : β → γ → Prop}
     (hR : ∀ y z, R y z → R' y z) (h : c.Refines spec R) : c.Refines spec R' := by

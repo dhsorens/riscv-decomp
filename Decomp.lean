@@ -42,3 +42,4 @@ public import Decomp.Examples.CountdownMachine
 public import Decomp.Examples.FindIndex
 public import Decomp.Examples.FindIndexMachine
 public import Decomp.Examples.FindIndexRefine
+public import Decomp.Examples.CountdownThenFind

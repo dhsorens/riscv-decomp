@@ -167,13 +167,15 @@ theorem refine_trans {R₁ : α → β → Prop} {R₂ : β → γ → Prop}
       obtain ⟨z, hz, hyz⟩ := hok₂ y hy
       exact ⟨z, hz, y, hxy, hyz⟩
 
-/-- **Refinement through `bind`.** If `m` refines `m'` up to `R`, and on
-    `R`-related inputs `f` refines `f'` up to `R'`, then the sequences refine
-    up to `R'`. -/
-theorem bind_refine {R : α → β → Prop} {R' : γ → γ → Prop}
-    {m : Nres α} {m' : Nres β} {f : α → Nres γ} {f' : β → Nres γ}
+/-- **Refinement through `bind`.** If `m` refines `m'` up to `R`, and on every
+    result `x` of `m` and `R`-related `y`, `f x` refines `f' y` up to `R'`,
+    then the sequences refine up to `R'`. The continuation obligation is only
+    asked at results `m` can actually produce, which is what lets a
+    deterministic `m` (a `ret`) hand its one value to the continuation. -/
+theorem bind_refine {δ : Type w} {R : α → β → Prop} {R' : γ → δ → Prop}
+    {m : Nres α} {m' : Nres β} {f : α → Nres γ} {f' : β → Nres δ}
     (hm : m ≤ conc R m')
-    (hf : ∀ x y, R x y → f x ≤ conc R' (f' y)) :
+    (hf : ∀ x y, m.ok x → R x y → f x ≤ conc R' (f' y)) :
     bind m f ≤ conc R' (bind m' f') := by
   by_cases hf' : (bind m' f').fails
   · exact Or.inl hf'
@@ -184,13 +186,13 @@ theorem bind_refine {R : α → β → Prop} {R' : γ → γ → Prop}
       · rintro (hmf | ⟨x, hx, hfx⟩)
         · exact hn hmf
         · obtain ⟨y, hy, hxy⟩ := hok x hx
-          rcases hf x y hxy with hff | ⟨hnf, _⟩
+          rcases hf x y hx hxy with hff | ⟨hnf, _⟩
           · exact hf' (Or.inr ⟨y, hy, hff⟩)
           · exact hnf hfx
       · rintro z ⟨x, hx, hz⟩
         obtain ⟨y, hy, hxy⟩ := hok x hx
         have hfy : ¬ (f' y).fails := fun h => hf' (Or.inr ⟨y, hy, h⟩)
-        obtain ⟨z', hz', hzz'⟩ := ok_of_le (hf x y hxy) hfy hz
+        obtain ⟨z', hz', hzz'⟩ := ok_of_le (hf x y hx hxy) hfy hz
         exact ⟨z', ⟨y, hy, hz'⟩, hzz'⟩
 
 /-! ## Monad laws, for the record
