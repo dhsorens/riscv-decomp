@@ -32,7 +32,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 97 jobs, zero warnings. `scripts/check-axioms.sh`: 748
+`lake build`: 98 jobs, zero warnings. `scripts/check-axioms.sh`: 844
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -167,7 +167,7 @@ without the machine -- is tested only when someone does so.
 *Acceptance (met):* for one function, an abstract-correctness proof and a
 refinement proof that are two separate, independently checkable theorems.
 
-### 6. The extractor · large · research risk · M0 landed
+### 6. The extractor · large · research risk · M0, M1 landed
 
 The hand proofs are the point being tested, not the destination. A
 proof-producing RV64 decompiler in Lean metaprogramming — per region, emit a
@@ -177,8 +177,9 @@ the existing combinators — is what makes this scale. `riscv-zkvm`'s
 Myreen's own HOL4 decompiler is ~2,200 lines of ML, ~500 architecture-specific.
 
 The generator stays out of the trusted base because its certificates are
-re-checked against the stepper. Everything it computes is a `#guard`, never a
-theorem.
+re-checked against the stepper. Everything it computes *about a program* is a
+`#guard`, never a theorem; the two theorems in `Extract/Body.lean` are about
+the generator's own model of the instructions, not about any program.
 
 *Milestones:*
 
@@ -190,14 +191,26 @@ theorem.
   hand-proved programs it reproduces the analysis their headers give in prose,
   including the `JAL` `FindIndex`'s region has to include. `JALR` is flagged,
   not followed.
-- **M1 — the abstract body.** From a loop's blocks, emit the `RecB` (or `Rec`)
-  over a register-file abstraction: symbolic evaluation of each block's plain
-  instructions into a function on `Reg → Word`, with the branch conditions as
-  the `inl`/`inr` split. Memory is out of scope for M1.
+- **M1 — the abstract body · done.** `Decomp.Extract.Body`: from a loop's
+  blocks, the `RecB RegFile Exit` over a register file — each block's ALU
+  instructions evaluated symbolically into a function on `Reg → Word`
+  (`execPlain`, with `execInstrBr`'s semantics: `execPlain_regs`), the branch
+  conditions as the `inl`/`inr` split (`branchTaken`, `nextPc`:
+  `terminal_step`), exits resolved through pure-jump blocks so the label is
+  what `cpsTotal_loopB_exits` wants. The body is total by construction and
+  `wellFormed` is the static check that it never reaches its fallback;
+  `emitBody` refuses loads, stores, syscalls, `JALR`, calls and nested loops.
+  On `Countdown` and `FindIndex` (with and without the `JAL`) the emitted
+  bodies agree with the hand-written `countdown` and `find` on every checked
+  input. Not done: the `*W` and M-extension ALU forms (a longer `match`, no
+  new idea), and a proof that `wellFormed` implies the fallback is unreachable
+  (M2 will need it per loop anyway).
 - **M2 — the certificate.** Emit `hCont` / `hExit` as goals and discharge them
   by leaf transfer and framing — the composition `FindIndexMachine.lean` does
   by hand, mechanised. The `side` condition comes out as the collected
-  representability facts.
+  representability facts. The coupling is now fixed by M1: `I r` is the
+  separating conjunction of `x ↦ᵣ r x` over the registers the loop touches,
+  and `Q y` the same at `y.regs`, with `exitOf := Exit.label`.
 - **M3 — acceptance.** The extractor reproduces `FindIndex`'s certificate
   automatically, then handles a second function nobody wrote by hand.
 

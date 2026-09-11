@@ -42,7 +42,8 @@
   headers describe in prose: `Countdown` is header-guarded with one exit;
   `FindIndex` has two exits that converge on `base + 16` through the `JAL` at
   `base + 12`. That is the check that the recovery is looking at the right
-  things, and it is where the next milestone starts (`ROADMAP.md` item 6).
+  things. `Decomp/Extract/Body.lean` (M1) takes the loops found here and emits
+  their abstract bodies (`ROADMAP.md` item 6).
 -/
 
 module
