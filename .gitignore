@@ -12,11 +12,11 @@ Thumbs.db
 *.orig
 *.rej
 
-# Claude Code state: worktrees, local settings, skills, commands -- all of it.
-# The files already tracked under .claude/ stay tracked (a .gitignore never
-# hides a tracked file); untrack them with `git rm -r --cached .claude` if the
-# intent is to stop versioning them altogether.
-.claude/
+# Claude local state (worktrees, local settings) is ignored; the project
+# skills and commands are tracked.
+.claude/*
+!.claude/skills/
+!.claude/commands/
 .codex/
 .opencode/
 .gemini/
