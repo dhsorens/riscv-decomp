@@ -36,7 +36,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 FORBIDDEN="native_decide bv_decide"
-SCAN_DIRS="Decomp Tools"
+SCAN_DIRS="Decomp DecompTools"
 
 mode="enforce"
 case "${1:-}" in

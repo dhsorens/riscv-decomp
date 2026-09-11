@@ -1,5 +1,5 @@
 /-
-  Tools.AxiomSweep -- kernel-truth axiom gate for this repository's own Lean.
+  DecompTools.AxiomSweep -- kernel-truth axiom gate for this repository's own Lean.
 
   Ported in spirit from `riscv-zkvm`'s `scripts/AxiomSweep.lean`, which audits
   *its* libraries and says nothing about ours. Without it the axiom policy would
@@ -31,12 +31,12 @@ open Lean
 
 /-- Declarations under these prefixes are audited: everything this repository
     owns. -/
-def scanPrefixes : List Name := [`Decomp, `Tools]
+def scanPrefixes : List Name := [`Decomp, `DecompTools]
 
 /-- Modules to import. These two roots transitively cover the whole owned
     tree. -/
 def scanModules : Array Import :=
-  #[{ module := `Decomp }, { module := `Tools }]
+  #[{ module := `Decomp }, { module := `DecompTools }]
 
 /-- The axioms this repository accepts, and why.
 

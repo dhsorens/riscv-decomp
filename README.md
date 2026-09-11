@@ -102,7 +102,7 @@ structure literal.
 
 ## Trust
 
-Every declaration under `Decomp` and `Tools` rests on exactly three axioms:
+Every declaration under `Decomp` and `DecompTools` rests on exactly three axioms:
 `propext`, `Classical.choice`, `Quot.sound`. `scripts/check-axioms.sh` reads what
 the kernel actually recorded, rather than trusting this paragraph;
 `scripts/check-forbidden-tactics.sh` is the fast source scan that keeps
