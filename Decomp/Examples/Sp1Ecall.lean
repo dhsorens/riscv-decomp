@@ -23,7 +23,11 @@
   so the triple is about the interesting difference rather than about a guard.
 -/
 
-import Decomp.Triple
+module
+
+public import Decomp.Triple
+
+@[expose] public section
 
 namespace Decomp.Examples
 

@@ -39,10 +39,14 @@
   it, so it says nothing about what LLVM does with a `break`.
 -/
 
-import Decomp.Certificate
-import Decomp.Leaf.Sp1Step
-import Decomp.Examples.FindIndex
-import RiscvZkvm.Rv64.Logic
+module
+
+public import Decomp.Certificate
+public import Decomp.Leaf.Sp1Step
+public import Decomp.Examples.FindIndex
+public import Decomp.Upstream
+
+@[expose] public section
 
 namespace Decomp.Examples.FindIndex
 

@@ -54,7 +54,11 @@
   which is what is here.
 -/
 
-import Decomp.Sp1.Syscalls
+module
+
+public import Decomp.Sp1.Syscalls
+
+@[expose] public section
 
 namespace Decomp
 

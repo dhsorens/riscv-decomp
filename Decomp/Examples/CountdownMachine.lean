@@ -36,10 +36,14 @@
   checked on states the loop *iterates from*.
 -/
 
-import Decomp.Certificate
-import Decomp.Leaf.Sp1Step
-import Decomp.Examples.Countdown
-import RiscvZkvm.Rv64.Logic
+module
+
+public import Decomp.Certificate
+public import Decomp.Leaf.Sp1Step
+public import Decomp.Examples.Countdown
+public import Decomp.Upstream
+
+@[expose] public section
 
 namespace Decomp.Examples.Countdown
 

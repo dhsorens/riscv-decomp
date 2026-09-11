@@ -6,4 +6,6 @@
   gate fails the ordinary build.
 -/
 
-import Tools.AxiomSweep
+module
+
+public import Tools.AxiomSweep

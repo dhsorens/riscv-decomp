@@ -31,7 +31,11 @@
   them here is that the cell is a parameter, which upstream's are not.
 -/
 
-import Decomp.Triple
+module
+
+public import Decomp.Triple
+
+@[expose] public section
 
 namespace Decomp
 

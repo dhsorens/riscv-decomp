@@ -30,8 +30,17 @@
   model asks it of the window as a whole.
 -/
 
-import Decomp.Sp1.Syscalls
-import Decomp.Region.Sp1
+module
+
+public import Decomp.Sp1.Syscalls
+public import Decomp.Region.Sp1
+-- The `#guard`s below *run* `hintRead` on a probe state, so it must be
+-- importable as code, not only as a term.
+meta import RiscvZkvm.Rv64.StepOn
+meta import RiscvZkvm.Rv64.Logic.ByteOps
+meta import RiscvZkvm.Rv64.Logic.MemRegionWriteWide
+
+@[expose] public section
 
 namespace Decomp
 

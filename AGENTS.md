@@ -36,14 +36,16 @@ instruction changed, an observation that a trap satisfies.
 
 | name | when |
 | --- | --- |
-| `/work` (`work`) | default contribute: attack, then maybe prove, then PR |
+| `/work` (`work`) | default contribute: attack, then maybe prove, then PR; consume review feedback on open PRs |
+| `/review-pr` (`review-pr`) | adversarial review of a ready PR; structured feedback or merge |
 | `/plan-slice` | plan 1–3 items; do not implement |
-| `/reflect` | after `/work`; skill hygiene only |
+| `/reflect` | after a struggling `/work` slice; skill hygiene only |
 | `asm-adversary` | statement ≟ machine ≟ observation |
 | `asm-bridge-gotchas` | proving or debugging a triple, leaf, region or loop |
 
 `asm-adversary` sets `disable-model-invocation`: only the user can run it. A
-worker session that cannot run it says so in the PR rather than faking a pass.
+worker or reviewer session that cannot run it says so in the PR rather than
+faking a pass. `/work` never merges. `/review-pr` never edits Lean.
 
 ## Off-limits
 
@@ -51,5 +53,6 @@ worker session that cannot run it says so in the PR rather than faking a pass.
   "many lemmas."
 - Do not weaken a statement to make it provable without saying so in the file
   header and in `ROADMAP.md`.
-- Do not land `/work` slice work on `main`.
+- Do not land `/work` slice work on `main`. Merge is `/review-pr` only,
+  and only for what is already honest or is an explicit finding.
 - Do not add a `Co-authored-by` trailer. Commits are the user's.

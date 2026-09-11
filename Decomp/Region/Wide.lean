@@ -22,7 +22,11 @@
   there is no read-modify-write and the payload is just `dwordBytes v`.
 -/
 
-import Decomp.Region.Bytes
+module
+
+public import Decomp.Region.Bytes
+
+@[expose] public section
 
 namespace Decomp
 

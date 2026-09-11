@@ -20,7 +20,11 @@
   Nothing here is ZIP-2005-specific.
 -/
 
-import Decomp.Loop
+module
+
+public import Decomp.Loop
+
+@[expose] public section
 
 namespace Decomp
 

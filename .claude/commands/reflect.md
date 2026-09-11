@@ -17,6 +17,7 @@ Distinguish:
 - Honesty of `README.md` / `ROADMAP.md` / ROADMAP gap notes vs chat
 - Following `AGENTS.md` and project skills
 - Attack-before-prove: was the adversary pass actually run?
+- Review loop: did a bounce weaken a statement to satisfy `review-pr`?
 - Tool usage and efficiency
 
 ## For each ACTUAL struggle
