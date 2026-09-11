@@ -90,6 +90,17 @@ theorem ld_sp1Mem (rd rs1 : Reg) (v_addr vOld memVal : Word) (off : BitVec 12) (
     stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h)
       (by rw [memOkSp1_ld, hrs1]; exact hv)
 
+
+/-- `LD rd, off(rd)` on SP1: `ld_same_on` with `hst` discharged. -/
+theorem ld_same_sp1Mem (rd : Reg) (v_addr memVal : Word) (off : BitVec 12) (base : Word)
+    (hrd : rd ≠ .x0) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LD rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 (v_addr + signExtend12 off) memVal)
+      ((rd ↦ᵣ memVal) ** memIsSp1 (v_addr + signExtend12 off) memVal) :=
+  ld_same_on rd v_addr memVal off base hrd fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h)
+      (by rw [memOkSp1_ld, hrs1]; exact hv)
+
 theorem sd_sp1Mem (rs1 rs2 : Reg) (v_addr v_data memOld : Word) (off : BitVec 12) (base : Word)
     (hoff : OffText lo hi (v_addr + signExtend12 off) 8) :
     cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.SD rs1 rs2 off))
@@ -126,6 +137,21 @@ theorem lw_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : 
       rw [memOkSp1_lw, hrs1, Bool.and_eq_true]
       exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h4⟩)
 
+
+/-- `LW rd, off(rd)` on SP1: `lw_same_on` with `hst` discharged. -/
+theorem lw_same_sp1Mem (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (h4 : isAligned4 (v_addr + signExtend12 off) = true) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LW rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).signExtend 64)) **
+        memIsSp1 dwordAddr wordVal) :=
+  lw_same_on rd v_addr off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+      rw [memOkSp1_lw, hrs1, Bool.and_eq_true]
+      exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h4⟩)
+
 theorem lwu_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word)
     (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
     (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
@@ -136,6 +162,21 @@ theorem lwu_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base :
         (rd ↦ᵣ ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).zeroExtend 64)) **
         memIsSp1 dwordAddr wordVal) :=
   lwu_on rd rs1 v_addr vOld off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+      rw [memOkSp1_lwu, hrs1, Bool.and_eq_true]
+      exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h4⟩)
+
+
+/-- `LWU rd, off(rd)` on SP1: `lwu_same_on` with `hst` discharged. -/
+theorem lwu_same_sp1Mem (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (h4 : isAligned4 (v_addr + signExtend12 off) = true) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LWU rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).zeroExtend 64)) **
+        memIsSp1 dwordAddr wordVal) :=
+  lwu_same_on rd v_addr off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
     stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
       rw [memOkSp1_lwu, hrs1, Bool.and_eq_true]
       exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h4⟩)
@@ -172,6 +213,21 @@ theorem lh_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : 
       rw [memOkSp1_lh, hrs1, Bool.and_eq_true]
       exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h2⟩)
 
+
+/-- `LH rd, off(rd)` on SP1: `lh_same_on` with `hst` discharged. -/
+theorem lh_same_sp1Mem (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (h2 : isAligned2 (v_addr + signExtend12 off) = true) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LH rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).signExtend 64)) **
+        memIsSp1 dwordAddr wordVal) :=
+  lh_same_on rd v_addr off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+      rw [memOkSp1_lh, hrs1, Bool.and_eq_true]
+      exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h2⟩)
+
 theorem lhu_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word)
     (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
     (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
@@ -182,6 +238,21 @@ theorem lhu_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base :
         (rd ↦ᵣ ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).zeroExtend 64)) **
         memIsSp1 dwordAddr wordVal) :=
   lhu_on rd rs1 v_addr vOld off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+      rw [memOkSp1_lhu, hrs1, Bool.and_eq_true]
+      exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h2⟩)
+
+
+/-- `LHU rd, off(rd)` on SP1: `lhu_same_on` with `hst` discharged. -/
+theorem lhu_same_sp1Mem (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (h2 : isAligned2 (v_addr + signExtend12 off) = true) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LHU rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).zeroExtend 64)) **
+        memIsSp1 dwordAddr wordVal) :=
+  lhu_same_on rd v_addr off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
     stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
       rw [memOkSp1_lhu, hrs1, Bool.and_eq_true]
       exact ⟨isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv), h2⟩)
@@ -217,6 +288,20 @@ theorem lb_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : 
       rw [memOkSp1_lb, hrs1]
       exact isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv))
 
+
+/-- `LB rd, off(rd)` on SP1: `lb_same_on` with `hst` discharged. -/
+theorem lb_same_sp1Mem (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LB rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).signExtend 64)) **
+        memIsSp1 dwordAddr wordVal) :=
+  lb_same_on rd v_addr off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+      rw [memOkSp1_lb, hrs1]
+      exact isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv))
+
 theorem lbu_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word)
     (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
     (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr) :
@@ -226,6 +311,20 @@ theorem lbu_sp1Mem (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base :
         (rd ↦ᵣ ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).zeroExtend 64)) **
         memIsSp1 dwordAddr wordVal) :=
   lbu_on rd rs1 v_addr vOld off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
+    stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+      rw [memOkSp1_lbu, hrs1]
+      exact isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv))
+
+
+/-- `LBU rd, off(rd)` on SP1: `lbu_same_on` with `hst` discharged. -/
+theorem lbu_same_sp1Mem (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word) (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LBU rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsSp1 dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).zeroExtend 64)) **
+        memIsSp1 dwordAddr wordVal) :=
+  lbu_same_on rd v_addr off base dwordAddr wordVal hrd halign fun _ _ hfetch hrs1 hv =>
     stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
       rw [memOkSp1_lbu, hrs1]
       exact isValidMemAddrSp1_of_alignToDword (by rw [halign]; exact hv))
