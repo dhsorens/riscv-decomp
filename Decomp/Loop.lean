@@ -240,42 +240,7 @@ of the judgement. The rule's conclusion is about a *particular* derivation
 `RunsTo r side n x y`, and `y` says which exit was taken; so the exit address
 may depend on `y`, and once it does no join is needed. `cpsTotal_loopB_exits`
 above is that rule, `cpsTotal_loopB` is its instance at a constant `exitOf`,
-and the proof is the same four lines.
-
-A caller that does not know `y` -- one holding `TerminatesB` rather than a
-derivation -- gets a two-exit total judgement from it, `cpsTotalBranch`
-(`Decomp/Triple.lean`), with the arm postconditions existentially quantified
-over the outputs that reach each label (`cpsTotalBranch_of_loopB`). That is the
-`cpsTotal` analogue of `cpsBranch` the roadmap asked about, and it is derived,
-not primitive. -/
-
-/-- The two-exit total judgement, from a loop whose outputs are sorted onto two
-    labels by `tag`. For a caller with only `TerminatesB`: the run reaches
-    `exit_t` with *some* output tagged `true`, or `exit_f` with some output
-    tagged `false`, and `Q` of that output holds. -/
-theorem cpsTotalBranch_of_loopB {st : Stepper} {r : RecB α β} {side : α → Prop}
-    {entry exit_t exit_f : Word} {cr : CodeReq} {tag : β → Bool}
-    {I : α → Assertion} {Q : β → Assertion} {nC nE : Nat}
-    (hCont : ∀ x x', r.body x = .inl x' → side x →
-      cpsWithin st nC entry entry cr (I x) (I x'))
-    (hExit : ∀ x y, r.body x = .inr y → side x →
-      cpsWithin st nE entry (if tag y then exit_t else exit_f) cr (I x) (Q y))
-    {x : α} (h : TerminatesB r side x) :
-    cpsTotalBranch st entry cr (I x)
-      exit_t (fun hp => ∃ y, tag y = true ∧ Q y hp)
-      exit_f (fun hp => ∃ y, tag y = false ∧ Q y hp) := by
-  obtain ⟨n, y, ht⟩ := h
-  have hrun := cpsTotal_loopB_exits (exitOf := fun y => if tag y then exit_t else exit_f)
-    hCont hExit ht
-  cases htag : tag y with
-  | true =>
-    rw [htag, if_pos rfl] at hrun
-    exact cpsTotalBranch_of_cpsTotal_t (cpsTotal_weaken (fun _ hp => hp)
-      (fun _ hq => ⟨y, htag, hq⟩) hrun)
-  | false =>
-    rw [htag, if_neg Bool.false_ne_true] at hrun
-    exact cpsTotalBranch_of_cpsTotal_f (cpsTotal_weaken (fun _ hp => hp)
-      (fun _ hq => ⟨y, htag, hq⟩) hrun)
+and the proof is the same four lines. -/
 
 /-- The returning-body rule against a closed-form function. `heq` is the
     ordinary-induction obligation: whatever the region returns, it is `f x`. -/
