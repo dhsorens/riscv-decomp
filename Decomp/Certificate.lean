@@ -166,6 +166,40 @@ def ofLoop {r : Rec α β} {side : α → Prop}
     (h4 : ∀ n x, TerminatesIn r side n x → r.runN n x = f x) :
     (ofLoop h1 h2 h3 h4).fn = f := rfl
 
+/-- Package a returning-body loop as a certificate. `pre` is `TerminatesB r
+    side`, for the same reason `ofLoop`'s is `Terminates`: the rider is
+    structural. `heq` is the closed-form obligation -- whatever the region
+    returns is `f x` -- and it is quantified over every derivation, so a body
+    with several `inr` branches discharges it once per branch
+    (`Examples/FindIndex.lean`'s `runsTo_eq_result`). -/
+def ofLoopB {r : RecB α β} {side : α → Prop}
+    {entry exit_ : Word} {cr : CodeReq}
+    {I : α → Assertion} {Q : β → Assertion} {nC nE : Nat} {f : α → β}
+    (hCont : ∀ x x', r.body x = .inl x' → side x →
+      cpsWithin st nC entry entry cr (I x) (I x'))
+    (hExit : ∀ x y, r.body x = .inr y → side x →
+      cpsWithin st nE entry exit_ cr (I x) (Q y))
+    (heq : ∀ n x y, RunsTo r side n x y → y = f x) :
+    Cert st α β where
+  entry := entry
+  exit_ := exit_
+  cr := cr
+  fn := f
+  pre := TerminatesB r side
+  couple := I
+  post := Q
+  sound := fun _ h => cpsTotal_loopB_eq hCont hExit heq h
+
+@[simp] theorem ofLoopB_fn {r : RecB α β} {side : α → Prop}
+    {entry exit_ : Word} {cr : CodeReq}
+    {I : α → Assertion} {Q : β → Assertion} {nC nE : Nat} {f : α → β}
+    (h1 : ∀ x x', r.body x = .inl x' → side x →
+      cpsWithin st nC entry entry cr (I x) (I x'))
+    (h2 : ∀ x y, r.body x = .inr y → side x →
+      cpsWithin st nE entry exit_ cr (I x) (Q y))
+    (h3 : ∀ n x y, RunsTo r side n x y → y = f x) :
+    (ofLoopB h1 h2 h3).fn = f := rfl
+
 end Cert
 
 end Decomp

@@ -16,12 +16,17 @@ regions are enough to drive real compiled code: downstream, `memset`'s tail loop
 and every path through `memcpy`'s ≤3-byte residual dispatch are proved against
 this library, over a source and a destination region separated by `**`.
 
+Both loop rules now have a consumer in this repository: `Countdown` drives the
+header-guarded `cpsTotal_loop`, and `FindIndex` drives `cpsTotal_loopB` through
+both of its `inr` branches -- a top-of-body break and a bottom exit converging
+on one label. Neither touches memory.
+
 What is *not* here is anything above L2. Every statement is machine-level: it
 says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 93 jobs, zero warnings. `scripts/check-axioms.sh`: 400
+`lake build`: 95 jobs, zero warnings. `scripts/check-axioms.sh`: 482
 declarations on the three documented axioms.
 
 ---
@@ -31,21 +36,24 @@ declarations on the three documented axioms.
 Ordered cheapest first within each group. An item is here because it is
 *missing*, not merely trusted — `README.md` "Trust" has the trusted set.
 
-### 1. The mid-body exit rule has no consumer · small
+### 1. The mid-body exit rule has one consumer, hand-written · small
 
 `cpsTotal_loopB` takes `body : α → α ⊕ β`, so an early `break` is a second `inr`
-branch and nothing in the rule counts exits. It has been driven against real
-code exactly once, by a **single-exit** loop (`memset`'s tail, downstream),
-which validates the rule and the no-rotation claim and *not* the second `inr`
-branch.
+branch and nothing in the rule counts exits. `Decomp.Examples.FindIndex` is the
+first proof in which two distinct `inr` branches of one `body` are discharged
+(`exit_` in `FindIndexMachine.lean`): a four-instruction index search that
+leaves from the top of the body on a hit and from the bottom, through a `JAL`,
+on exhaustion, on both backends from one proof. `Cert.ofLoopB` packages the
+shape.
 
-The first real consumer is a compiled `memcpy`'s alignment loop, which tests its
-condition five instructions into the body and leaves from there. Beyond the rule
-it needs an `x & 7 = 0 ↔ index % 8 = 0` bridge (the shape of the downstream
-`and_one_of_even`) and an eleven-atom coupling over two regions.
+What it does *not* exercise is memory. The body touches three registers, so
+there is no region coupling, no `x & 7 = 0 ↔ index % 8 = 0` bridge and no
+eleven-atom invariant, and no compiler emitted it. A compiled `memcpy`'s
+alignment loop, downstream, is still the first *real* consumer, and still owes
+those three things.
 
-*Acceptance:* a proof in which two distinct `inr` branches of one `body` are
-discharged.
+*Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
+are discharged. *Remaining:* the same against compiler output over a region.
 
 ### 2. The same-register keystone family is one instruction wide · small
 
