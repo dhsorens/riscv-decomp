@@ -111,9 +111,9 @@ code at its pc never reaches an accepting halt. Panic machinery generally does
 apart — **as a convention**: `SyscallHalted` is the machine's event, but "`a0`
 is the exit code and zero is success" is the host ABI (`Program.lean`'s `HALT`
 macro, the interpreter's exit report), which the step relation does not know.
-Whether it is the verifier's acceptance event is the owed adversarial pass
-below; until it runs, `Accepted` reads "the host-ABI accept". Two rules refute
-it: `not_accepted_of_cpsSyscallHalt` (from a
+That convention is recorded in README "Trust", as a protocol definition rather
+than a machine fact, and it is the one this library reasons about. Two rules
+refute it: `not_accepted_of_cpsSyscallHalt` (from a
 halt triple whose postcondition pins `a0`, composing with `halt_sp1Text` —
 `not_accepted_of_halt_sp1Text` is the SP1 one-liner) and
 `not_accepted_of_invariant` (`J` initially, `J` preserved by every step, `J →
@@ -125,10 +125,10 @@ downstream, and what it owes is a `cpsTotal` from each panic entry to its
 `HALT` with `x10 ↦ᵣ 1` — a proof about values through formatting code, which
 nothing here makes cheap.
 
-*Acceptance (met, modulo the convention):* a judgement composing with
-`cpsSyscallHalt` that concludes "this region cannot halt with `a0 = 0`" from
-block-local facts. *Remaining:* the adversary pass on `Accepted`, and a
-consumer, downstream.
+*Acceptance (met, by the convention recorded in README "Trust"):* a judgement
+composing with `cpsSyscallHalt` that concludes "this region cannot halt with
+`a0 = 0`" from block-local facts. *Remaining:* the adversary pass on
+`SyscallHalted`, which `Accepted` rests on, and a consumer, downstream.
 
 ### 5. The refinement layer (L3) · large
 
@@ -231,11 +231,12 @@ statements were landed with the pass outstanding, both additive and reversible:
   hide an obligation?
 - **`Accepted`** (`Decomp/Reject.lean`). `SyscallHalted ∧ a0 = 0` installs a
   semantic accept boundary the step relation cannot justify on its own: that
-  `a0` is the exit code and zero means success is the host ABI. The question
-  for the pass: is this the *verifier's* acceptance event — can a run with
-  `a0 ≠ 0` at the halt still be accepted by the prover, or one with `a0 = 0`
-  rejected? Every `¬ Accepted` rule is additive and reads as a statement about
-  the convention until this is confirmed. Raised by the review of PR #10.
+  `a0` is the exit code and zero means success is the host ABI. The convention
+  question — is this the *verifier's* acceptance event? — was put to the user
+  and answered: it is the protocol's accept, not the machine's, and a prover
+  proves any `HALT` (README "Trust"). What the pass still owes is the machine
+  side, the `SyscallHalted` bullet below, on which `Accepted` rests. Raised by
+  the review of PR #10.
 - **`SyscallHalted`.** It is stronger than `cpsHalt` and closer to the machine,
   but it is a *definition of accept*, and the whole reject-path argument rests on
   it. Worth attacking directly: is there a state that satisfies it and is not a

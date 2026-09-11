@@ -138,6 +138,13 @@ Outside that, and not reduced by anything here:
   the `COMMIT` triple says "`pc += 4` and nothing else observable changed" —
   true, and weak. Harmless for a guest that commits nothing; a real obligation
   for one that does.
+- **`Accepted` is a convention.** `Decomp.Reject`'s `Accepted s := SyscallHalted
+  s ∧ a0 = 0` is the host-ABI, application-level accept: `HALT` with exit code
+  `0`. It is sound as a *protocol* definition, not as a machine fact. The stepper
+  does not know it; a prover will still prove any `HALT`, whatever `a0` holds;
+  and `COMMIT` remains a separate, unobservable conjunct (previous bullet). If a
+  later backend or consumer treats a nonzero halt as success, the `¬ Accepted`
+  rules stay true of the definition and false of that verifier.
 
 `ROADMAP.md` has the rest, including what is missing rather than merely trusted.
 

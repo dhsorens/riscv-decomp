@@ -43,8 +43,10 @@
   a **nonzero** `a0`, so it *is* `SyscallHalted`, and the two facts above say
   nothing about it. `Accepted` (halted by the syscall, *and* `a0 = 0`) is the
   observation that separates the two -- by the **host-ABI convention** that
-  `a0` is the exit code, which the machine model does not know; see its
-  docstring -- and the second half of this file refutes it two ways: from a `cpsSyscallHalt` whose postcondition pins `a0`
+  `a0` is the exit code, which the machine model does not know; README "Trust"
+  records it and the docstring says what it does and does not claim -- and the
+  second half of this file refutes it two ways: from a `cpsSyscallHalt` whose
+  postcondition pins `a0`
   (`not_accepted_of_cpsSyscallHalt`, composing with the halt leaf), and from an
   invariant that survives every step (`not_accepted_of_invariant`). Both have
   their run-induction done once here. Neither has a consumer yet: the guest that
@@ -147,11 +149,12 @@ the run done once here rather than per guest. -/
     **host ABI**, not the step relation: `Program.lean`'s `HALT` macro puts the
     exit code in `a0`, and the interpreter reports `a0` as the guest's exit
     value, but the machine model assigns `a0` no meaning at a halt. So every
-    `¬ Accepted` below is a theorem about this convention. Whether it is the
-    *verifier's* acceptance event -- whether a run with `a0 ≠ 0` here can still
-    be accepted by the prover, or one with `a0 = 0` rejected -- is the owed
-    adversarial pass in `ROADMAP.md`; until it runs, read `Accepted` as "the
-    host-ABI accept", not as "the prover accepted". -/
+    `¬ Accepted` below is a theorem about this convention -- the one recorded
+    in README "Trust": sound as a *protocol* definition, not as a machine fact.
+    A prover will still prove any `HALT`, whatever `a0` holds, and `COMMIT` is
+    a separate, unobservable conjunct. A backend or consumer that treats a
+    nonzero halt as success makes these rules true of the definition and false
+    of that verifier. -/
 def Accepted (s : MachineState) : Prop :=
   SyscallHalted s ∧ s.getReg .x10 = 0
 
