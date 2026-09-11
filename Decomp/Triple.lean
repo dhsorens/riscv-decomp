@@ -332,7 +332,15 @@ theorem cpsBranch_merge_total_same_cr {n : Nat} {entry l_t l_f exit_ : Word}
 the bound deleted. It is here for the caller who knows a region leaves by one
 of two labels but not which -- the loop rule `cpsTotal_loopB_exits` produces a
 *single* exit whenever the derivation is in hand, so this is the derived,
-weaker form (`cpsTotalBranch_of_loopB`). -/
+weaker form (`cpsTotalBranch_of_loopB`).
+
+Which of the rules below have a consumer: the two injections
+`cpsTotalBranch_of_cpsTotal_t` / `_f` (`FindIndexMachine.find_branch'`) and,
+through `cpsTotalBranch_of_loopB`, the definition itself
+(`FindIndexMachine.find_branch`). `cpsTotalBranch_of_cpsBranch`,
+`cpsTotalBranch_weaken` and `cpsTotalBranch_merge_same_cr` are statements: the
+obvious structural rules, restated so the judgement is not a dead end, with
+nothing yet using them. -/
 
 /-- Total two-exit branch: from `entry`, eventually reach `exit_t` with `Q_t` or
     `exit_f` with `Q_f`. -/
