@@ -26,7 +26,7 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 467
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 473
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -76,15 +76,22 @@ is a separate item, wanted only when a consumer asks.
 
 *Acceptance (met):* the six missing forms and the note.
 
-### 3. The `OffText` discharges are restated per guest · small
+### 3. The `OffText` discharges live here now · done
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
-below it the first — but both lemmas currently live in the downstream project,
-stated at *its* `textLo`/`textHi`. They generalise to any window.
+below it the first. `offText_of_below` and `offText_of_above` (`Leaf/Sp1Text.lean`)
+state that for any window; `offText_region_below` / `_above` are the forms a
+loop body's store guard needs at byte `i` of a region, taking the bound the
+region keystones already carry. `offText_of_above` asks for a word-aligned
+`hi`, which every real `.text` end has; `offText_of_above'` is the raw form.
 
-*Acceptance:* `offText_of_below` and `offText_of_above` here, with the
-downstream instances as one-line corollaries.
+The downstream instances are not yet rewritten as corollaries — that is a
+downstream change, and the `example`s next to the lemmas stand in for it at
+realistic numbers.
+
+*Acceptance (met here):* the four lemmas. *Remaining downstream:* replace the
+per-guest restatements with one-line instances.
 
 ### 4. The halting half of the reject path · medium
 
