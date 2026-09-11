@@ -16,7 +16,7 @@ it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
 live.
 
 ```
-lake build            # 93 jobs, zero warnings
+lake build            # 95 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -34,7 +34,7 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept — the trapping half, on the observation that distinguishes a halt from a trap. |
-| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof, and the SP1-vs-ZisK ecall regression. |
+| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code; and the SP1-vs-ZisK ecall regression. |
 
 ## Why no fuel
 

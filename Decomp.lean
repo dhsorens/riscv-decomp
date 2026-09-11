@@ -34,3 +34,5 @@ import Decomp.Reject
 import Decomp.Examples.Sp1Ecall
 import Decomp.Examples.Countdown
 import Decomp.Examples.CountdownMachine
+import Decomp.Examples.FindIndex
+import Decomp.Examples.FindIndexMachine
