@@ -147,6 +147,68 @@ theorem toNat_align4 (a : Word) : (align4 a).toNat = a.toNat - a.toNat % 4 := by
 def OffText (lo hi : Nat) (a : Word) (w : Nat) : Prop :=
   a.toNat + w ≤ 2 ^ 64 ∧ (a.toNat + w ≤ lo ∨ hi ≤ a.toNat - a.toNat % 4)
 
+/-! ## Discharging `OffText`
+
+For a typical image each disjunct is free in one direction: the stack lies
+wholly *below* `.text`, the heap wholly *above* it. These say so once, for any
+window, so a downstream project states its instances as one-liners instead of
+re-proving them at its own `textLo`/`textHi`. The region-shaped forms are what
+a loop body's store guard needs at byte `i` of a region; their no-wrap bound
+is the one the region keystones already carry. -/
+
+/-- Below the window: the access ends at or before `lo`. -/
+theorem offText_of_below {lo hi : Nat} {a : Word} {w : Nat}
+    (hlo : lo ≤ 2 ^ 64) (h : a.toNat + w ≤ lo) : OffText lo hi a w :=
+  ⟨Nat.le_trans h hlo, Or.inl h⟩
+
+/-- Above the window, as `OffText` spells it: `hi` is at or below the access's
+    word-rounded start. -/
+theorem offText_of_above' {lo hi : Nat} {a : Word} {w : Nat}
+    (hw : a.toNat + w ≤ 2 ^ 64) (h : hi ≤ a.toNat - a.toNat % 4) : OffText lo hi a w :=
+  ⟨hw, Or.inr h⟩
+
+/-- Above the window, for a word-aligned `hi` -- which every real `.text` end
+    is: `hi ≤ a` is enough, since rounding `a` down to a word cannot cross a
+    multiple of four. -/
+theorem offText_of_above {lo hi : Nat} {a : Word} {w : Nat}
+    (hw : a.toNat + w ≤ 2 ^ 64) (hhi : hi % 4 = 0) (h : hi ≤ a.toNat) : OffText lo hi a w :=
+  ⟨hw, Or.inr (by omega)⟩
+
+/-- Byte `i` of a region does not wrap, so its address is the sum. -/
+theorem toNat_region_byte {regionBase : Word} {i : Nat}
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    (regionBase + BitVec.ofNat 64 i).toNat = regionBase.toNat + i := by
+  rw [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega),
+    Nat.mod_eq_of_lt (by omega)]
+
+/-- A `w`-byte access at byte `i` of a region that lies wholly below the window. -/
+theorem offText_region_below {lo hi : Nat} {regionBase : Word} {i w : Nat}
+    (hw : 0 < w) (hlo : lo ≤ 2 ^ 64) (h : regionBase.toNat + i + w ≤ lo) :
+    OffText lo hi (regionBase + BitVec.ofNat 64 i) w :=
+  offText_of_below hlo (by rw [toNat_region_byte (by omega)]; exact h)
+
+/-- A `w`-byte access at byte `i` of a region that lies wholly above a
+    word-aligned window. `hover` is the region keystones' own bound, one byte
+    wider. -/
+theorem offText_region_above {lo hi : Nat} {regionBase : Word} {i w : Nat}
+    (hw : 0 < w) (hover : regionBase.toNat + i + w ≤ 2 ^ 64)
+    (hhi : hi % 4 = 0) (h : hi ≤ regionBase.toNat) :
+    OffText lo hi (regionBase + BitVec.ofNat 64 i) w := by
+  have hE := toNat_region_byte (regionBase := regionBase) (i := i) (by omega)
+  exact offText_of_above (by rw [hE]; exact hover) hhi (by rw [hE]; omega)
+
+-- The two typical instances, at made-up but realistic numbers: a stack slot
+-- below a 32 KiB text window at 2 MiB, and an SP1 heap address above it.
+example : OffText 0x200000 0x208000 (0x1ff000 : Word) 8 :=
+  offText_of_below (by decide) (by decide)
+example : OffText 0x200000 0x208000 (0x78040618 : Word) 8 :=
+  offText_of_above (by decide) (by decide) (by decide)
+-- Byte `i` of a heap region, for every `i` the region admits.
+example (i : Nat) (hi : i < 4096) :
+    OffText 0x200000 0x208000 ((0x78040000 : Word) + BitVec.ofNat 64 i) 1 :=
+  offText_region_above (by decide) (by simp only [show (0x78040000 : Word).toNat = 0x78040000 from rfl]; omega)
+    (by decide) (by decide)
+
 /-- **The store guard.** Off the window, `noCodeAt` holds on every state the
     invariant admits. This is the fact the plan expected to thread as a
     hypothesis and could not; it is a consequence of `Stepper.inv` instead. -/

@@ -26,7 +26,7 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 467
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 473
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -81,15 +81,24 @@ complete and which is not.
 `Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
 leaf twins and the note; the region forms remain.
 
-### 3. The `OffText` discharges are restated per guest · small
+### 3. The `OffText` discharges are restated per guest · lemmas landed, downstream open
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
-below it the first — but both lemmas currently live in the downstream project,
-stated at *its* `textLo`/`textHi`. They generalise to any window.
+below it the first. `offText_of_below` and `offText_of_above`
+(`Leaf/Sp1Text.lean`) now state that for any window; `offText_region_below` /
+`_above` are the forms a loop body's store guard needs at byte `i` of a region,
+on the bound the region keystones already carry. `offText_of_above` asks for a
+word-aligned `hi`, which every real `.text` end has; `offText_of_above'` is the
+raw form.
+
+The downstream instances have **not** been rewritten as one-line corollaries.
+That is a change in `zip-2005-asm`, and until it lands this item's acceptance
+is unmet: the `example`s next to the lemmas are illustrations at made-up
+addresses, not the consumer.
 
 *Acceptance:* `offText_of_below` and `offText_of_above` here, with the
-downstream instances as one-line corollaries.
+downstream instances as one-line corollaries. *Landed so far:* the lemmas here.
 
 ### 4. The halting half of the reject path · medium
 

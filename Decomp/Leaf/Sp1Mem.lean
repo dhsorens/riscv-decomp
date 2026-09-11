@@ -21,9 +21,9 @@
   * **Stores** additionally take `OffText lo hi addr w`: the access lies off
     the code window. For a typical guest that is free in both directions -- a
     heap above `.text` discharges `OffText`'s second disjunct and a stack below
-    it the first -- but the two discharge lemmas are currently restated per
-    guest rather than living here (ROADMAP, "Generalise the `OffText`
-    discharges").
+    it the first -- and `offText_of_below` / `offText_of_above` in
+    `Sp1Text.lean` (with `offText_region_*` for byte `i` of a region) say so
+    for any window, so a guest's instances are one-liners.
 
   Everything here is a one-line instantiation; the proofs are in `Mem.lean` and
   the step lemmas in `Sp1Step.lean`.

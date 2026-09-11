@@ -151,7 +151,8 @@ The shape a downstream project instantiates:
    invariant a store guard needs.
 3. Prove the code-window invariant of the loaded state by evaluation, once.
 4. State the region assertions for the memory the code touches
-   (`bytesRegionSp1`), and the `OffText` discharges for its heap and stack.
+   (`bytesRegionSp1`); the `OffText` discharges for its heap and stack are
+   `offText_of_above` / `offText_of_below` at its own window.
 5. Build blocks from leaves, loops from `cpsTotal_loopB`, and the accept path
    from `cpsSyscallHalt`.
 
