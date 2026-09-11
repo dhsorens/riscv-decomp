@@ -30,8 +30,8 @@
   Two honest limits of the invariant. It is weaker than "this image": it says
   nothing about *extra* code inside the window, so it kills junk code only
   outside it -- the same positive-only weakness `CodeReq` already has. And a
-  store to a hole *inside* the window (this ELF has three, the `unimp`s) is not
-  covered by `OffText`; `noCodeAt` is true there, but nothing here proves it.
+  store to a hole *inside* the window (an `unimp` the loader left undecoded,
+  say) is not covered by `OffText`; `noCodeAt` is true there, but nothing here proves it.
   Off-window stores are the ones that matter for the stack and the heap.
 
   ## What this file gives and does not give

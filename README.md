@@ -11,10 +11,6 @@ no step budget threaded through the statement.
 The namespace is `Decomp`; the method is Magnus Myreen's, from
 *Formal verification of machine-code programs* (UCAM-CL-TR-765).
 
-Extracted from [`zip-2005-asm`](https://github.com/dhsorens/zip-2005-asm), where
-it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
-live.
-
 ```
 lake build            # 97 jobs, zero warnings
 scripts/check-axioms.sh
@@ -31,7 +27,7 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Tailrec` | Conditional termination as an *inductive*, so the least fixpoint is termination and Lean's generated `.rec` is TR-765's derived induction principle. Two shapes: `Rec` (header-guarded) and `RecB` (`body : α → α ⊕ β`, for a body that may return). |
 | `Decomp.Loop` | The loop rules. `cpsTotal_loop` for a header-guarded loop; `cpsTotal_loopB` for a body that may return — which covers an early `break`, a mid-body exit, and a bottom-guarded loop with no rotation; `cpsTotal_loopB_exits` for exits that land on different labels, the exit address chosen by the output. `cpsTotal_loop_of_loopB` proves the second subsumes the first. |
 | `Decomp.Certificate` | TR-765's L2 output contract as a structure: `(fn, pre, sound)`, with the rider that the caller must discharge `pre` made structural rather than documentary. |
-| `Decomp.Leaf.*` | One-instruction specs. `Core` transfers upstream's ZisK leaves to any `PlainAgree` stepper (18 of 26 constructors, no restatement). `Mem` re-proves the twelve load/store forms with the **cell as a parameter**, plus the seven `rd = rs1` load twins (`*_same_on`), whose two-atom footprint framing cannot fake. `Sp1Step`/`Sp1Text`/`Sp1Mem` are SP1's instances, including the code-window invariant a store guard needs. |
+| `Decomp.Leaf.*` | One-instruction specs. `Core` transfers upstream's ZisK leaves to any `PlainAgree` stepper (the eighteen non-memory constructors, no restatement). `Mem` re-proves the twelve load/store forms with the **cell as a parameter**, plus the seven `rd = rs1` load twins (`*_same_on`), whose two-atom footprint framing cannot fake. `Sp1Step`/`Sp1Text`/`Sp1Mem` are SP1's instances, including the code-window invariant a store guard needs. |
 | `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
@@ -172,8 +168,6 @@ The shape a downstream project instantiates:
    `offText_of_above` / `offText_of_below` at its own window.
 5. Build blocks from leaves, loops from `cpsTotal_loopB`, and the accept path
    from `cpsSyscallHalt`.
-
-`zip-2005-asm` does all five; its `Examples/Guest*.lean` are the reference.
 
 ## Licence
 

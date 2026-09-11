@@ -151,7 +151,7 @@ theorem bytesRegionSp1_sd_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
 
 /-! ## Byte accesses at an immediate offset
 
-`memcpy`'s tail copies with `LBU rd, 1(rs1)` and `SB rs1, rs2, 1`, i.e. through
+A compiled `memcpy` tail copies with `LBU rd, 1(rs1)` and `SB rs1, rs2, 1`, i.e. through
 one base register with immediate offsets, the way compiled code addresses a
 small run of bytes. These are the offset-taking forms of the two keystones
 above; the offset-zero versions are their special case. -/

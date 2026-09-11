@@ -47,7 +47,7 @@
 
   `cpsTotal_loopB` below is the same rule over `RecB` -- a body that may return
   instead of continuing -- and it is what a loop with an early `break` needs
-  (`memcpy`'s alignment loop leaves from five instructions into its body). It
+  (a compiled `memcpy`'s alignment loop leaves from part-way into its body). It
   is not a second rule bolted on: `cpsTotal_loop` is recoverable
   from it (`cpsTotal_loop_of_loopB`), so the two obligations of the general
   rule subsume the three of the header-shaped one.
@@ -178,9 +178,9 @@ returns to.
 
 That also means a **bottom-guarded** (do-while) loop needs no rotation: the
 body is `fun x => if continue x then .inl (step x) else .inr (out x)` and the
-region's entry is the guest's own entry. The `memset` tail loop this rule was
-first driven against used to sequence one unrolled body pass in front of
-`cpsTotal_loop` to get that effect; it does not any more. -/
+region's entry is the guest's own entry. Under `cpsTotal_loop` alone a
+bottom-guarded `memset` tail would have to sequence one unrolled body pass in
+front of the loop rule to get that effect; here it does not. -/
 
 /-- **The loop rule with an exit label per output.** The pass that leaves lands
     on `exitOf y`, a label chosen by the value the body returned, so two `inr`

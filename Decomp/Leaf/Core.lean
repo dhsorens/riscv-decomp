@@ -23,7 +23,7 @@
 
   For anything that is not a memory access, an `ECALL` or an `EBREAK`, SP1 and
   ZisK agree on every state (`stepSp1_eq_step_of_fetch`), so the eighteen
-  non-memory constructors this guest uses transfer uniformly. For loads,
+  non-memory constructors below transfer uniformly. For loads,
   agreement holds on every state the ZisK cell admits, because ZisK's address
   map is contained in SP1's (`isValidDwordAccessSp1_of_isValidDwordAccess`).
   For stores it holds only where SP1's `noCodeAt` does -- a fact about the code

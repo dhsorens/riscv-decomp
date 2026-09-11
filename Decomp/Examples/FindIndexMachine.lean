@@ -33,9 +33,9 @@
   bound in `runsTo_found`).
 
   It does not exercise: memory. The body touches three registers and nothing
-  else, so there is no region coupling, no `x & 7 = 0 ↔ index % 8 = 0` bridge
-  and no eleven-atom invariant; `memcpy`'s alignment loop, downstream, still
-  owes those. And it is hand-written, like `Countdown` -- no compiler emitted
+  else, so there is no region coupling and no `x & 7 = 0 ↔ index % 8 = 0`
+  alignment bridge; a compiled alignment loop over a region would owe both.
+  And it is hand-written, like `Countdown` -- no compiler emitted
   it, so it says nothing about what LLVM does with a `break`.
 -/
 

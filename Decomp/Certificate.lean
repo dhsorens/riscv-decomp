@@ -14,10 +14,10 @@
   and `Cert` below is exactly that. The payoff is that everything above L2 sees
   only `fn`, `pre` and `post` -- no `Instr`, no `MachineState`, no `Word`, no
   `Stepper` -- so the L3 refinement calculus and the L4 specification are
-  ISA-generic for free, and a second `*-asm` project reuses the expensive
+  ISA-generic for free, and a second guest project reuses the expensive
   artifact (the proofs) rather than the plumbing.
 
-  Nothing here is ZIP-2005-specific.
+  Nothing here is specific to any guest.
 -/
 
 module
