@@ -60,41 +60,48 @@ those three things.
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
 
-### 2. The same-register load family is complete at the leaf layer · done
+### 2. The same-register keystone family is one instruction wide · leaf half landed
 
 `LBU rd, off(rd)` needed its own leaf all the way down — `lbu_same_on`,
 `bytesRegionOn_lbu_same_at`, `bytesRegionSp1_lbu_same_at` — because the ordinary
 keystone's postcondition keeps `rs1 ↦ᵣ ptr`, forcing `rd ≠ rs1`, and framing
 cannot fake it: the footprint is genuinely two atoms rather than three.
 
-`LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` now have the same twin at both leaf
-layers (`*_same_on` in `Leaf/Mem.lean`, `*_same_sp1Mem` in `Leaf/Sp1Mem.lean`),
-each a mirror of its three-atom sibling with one `pull_second` fewer. They are
-statements: nothing consumes them yet, and only `LBU`'s has ever been needed.
+The *leaf* half is done: `LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` have
+`*_same_on` (`Leaf/Mem.lean`) and `*_same_sp1Mem` (`Leaf/Sp1Mem.lean`), each a
+mirror of its three-atom sibling with one `pull_second` fewer. They are
+statements with no consumer.
 
-At the *region* layer nothing changed, and the note in `Region/Bytes.lean` says
-why: the byte-indexed keystones are `LBU`/`SB` only, so there is no ordinary
-`bytesRegionOn_lw_at` for a `_same_at` to mirror. A wide load at a region index
-is a separate item, wanted only when a consumer asks.
+The *region* half — the six `_same_at` keystones this item is named for — is
+**not**: there is no `bytesRegionOn_lw_same_at` and so on, because there is no
+ordinary `bytesRegionOn_lw_at` for it to mirror. The byte-region keystones are
+`LBU`/`SB` only, and a wide load at a region index needs the `packBytes`
+algebra run the other way from `Region/Wide.lean`'s stores. That is the real
+work behind this item, and it is open. `Region/Bytes.lean` says which layer is
+complete and which is not.
 
-*Acceptance (met):* the six missing forms and the note.
+*Acceptance:* the six missing `_same_at` region forms, and a note in
+`Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
+leaf twins and the note; the region forms remain.
 
-### 3. The `OffText` discharges live here now · done
+### 3. The `OffText` discharges are restated per guest · lemmas landed, downstream open
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
-below it the first. `offText_of_below` and `offText_of_above` (`Leaf/Sp1Text.lean`)
-state that for any window; `offText_region_below` / `_above` are the forms a
-loop body's store guard needs at byte `i` of a region, taking the bound the
-region keystones already carry. `offText_of_above` asks for a word-aligned
-`hi`, which every real `.text` end has; `offText_of_above'` is the raw form.
+below it the first. `offText_of_below` and `offText_of_above`
+(`Leaf/Sp1Text.lean`) now state that for any window; `offText_region_below` /
+`_above` are the forms a loop body's store guard needs at byte `i` of a region,
+on the bound the region keystones already carry. `offText_of_above` asks for a
+word-aligned `hi`, which every real `.text` end has; `offText_of_above'` is the
+raw form.
 
-The downstream instances are not yet rewritten as corollaries — that is a
-downstream change, and the `example`s next to the lemmas stand in for it at
-realistic numbers.
+The downstream instances have **not** been rewritten as one-line corollaries.
+That is a change in `zip-2005-asm`, and until it lands this item's acceptance
+is unmet: the `example`s next to the lemmas are illustrations at made-up
+addresses, not the consumer.
 
-*Acceptance (met here):* the four lemmas. *Remaining downstream:* replace the
-per-guest restatements with one-line instances.
+*Acceptance:* `offText_of_below` and `offText_of_above` here, with the
+downstream instances as one-line corollaries. *Landed so far:* the lemmas here.
 
 ### 4. The halting half of the reject path · rules landed, no consumer
 
@@ -103,8 +110,13 @@ code at its pc never reaches an accepting halt. Panic machinery generally does
 **not** trap — it reaches the `HALT` syscall with a nonzero `a0`, so it *is*
 `SyscallHalted`.
 
-`Accepted s := SyscallHalted s ∧ a0 = 0` is now the observation that tells the
-two apart, and two rules refute it: `not_accepted_of_cpsSyscallHalt` (from a
+`Accepted s := SyscallHalted s ∧ a0 = 0` is the observation that tells the two
+apart — **as a convention**: `SyscallHalted` is the machine's event, but "`a0`
+is the exit code and zero is success" is the host ABI (`Program.lean`'s `HALT`
+macro, the interpreter's exit report), which the step relation does not know.
+Whether it is the verifier's acceptance event is the owed adversarial pass
+below; until it runs, `Accepted` reads "the host-ABI accept". Two rules refute
+it: `not_accepted_of_cpsSyscallHalt` (from a
 halt triple whose postcondition pins `a0`, composing with `halt_sp1Text` —
 `not_accepted_of_halt_sp1Text` is the SP1 one-liner) and
 `not_accepted_of_invariant` (`J` initially, `J` preserved by every step, `J →
@@ -116,8 +128,9 @@ downstream, and what it owes is a `cpsTotal` from each panic entry to its
 `HALT` with `x10 ↦ᵣ 1` — a proof about values through formatting code, which
 nothing here makes cheap.
 
-*Acceptance (met):* a judgement composing with `cpsSyscallHalt` that concludes
-"this region cannot halt with `a0 = 0`" from block-local facts. *Remaining:* a
+*Acceptance (met, modulo the convention):* a judgement composing with
+`cpsSyscallHalt` that concludes "this region cannot halt with `a0 = 0`" from
+block-local facts. *Remaining:* the adversary pass on `Accepted`, and a
 consumer, downstream.
 
 ### 5. The refinement layer (L3) · landed for one function
@@ -220,6 +233,13 @@ statements were landed with the pass outstanding, both additive and reversible:
   withdrawn. The specific question: is `RunsTo.exit` taking `side x` — where
   `TerminatesIn.exit` takes none — the right departure from TR-765, or does it
   hide an obligation?
+- **`Accepted`** (`Decomp/Reject.lean`). `SyscallHalted ∧ a0 = 0` installs a
+  semantic accept boundary the step relation cannot justify on its own: that
+  `a0` is the exit code and zero means success is the host ABI. The question
+  for the pass: is this the *verifier's* acceptance event — can a run with
+  `a0 ≠ 0` at the halt still be accepted by the prover, or one with `a0 = 0`
+  rejected? Every `¬ Accepted` rule is additive and reads as a statement about
+  the convention until this is confirmed. Raised by the review of PR #10.
 - **`SyscallHalted`.** It is stronger than `cpsHalt` and closer to the machine,
   but it is a *definition of accept*, and the whole reject-path argument rests on
   it. Worth attacking directly: is there a state that satisfies it and is not a
