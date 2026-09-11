@@ -19,7 +19,11 @@
     (which continues at `pc + 4` unless it is `HALT`, a fact the CFG cannot
     know), trap, or **indirect** -- a `JALR`, whose target is a register value
     and is the roadmap's known risk: CFG recovery stops there and a hand-written
-    certificate has to take over.
+    certificate has to take over. One blind spot to know before M1: a `JAL`
+    with `rd ≠ x0` is a *call*, and `succOf` treats it as an unconditional
+    jump that never returns to `pc + 4`, so a loop containing a call is
+    analysed as leaving through the callee. Calls are M1's business, where the
+    callee's certificate is sequenced in.
   * **Loops.** A back edge is a transfer to a block entry at or before the
     transferring block; its target is the header. The loop's blocks are taken to
     be the address interval from the header to the back edge's source

@@ -29,7 +29,7 @@ against `searchSpec` in two theorems that do not know about each other. What is
 still missing there is a program of several regions -- `bind_refine` has no
 consumer (item 5).
 
-`lake build`: 96 jobs, zero warnings. `scripts/check-axioms.sh`: 734
+`lake build`: 96 jobs, zero warnings. `scripts/check-axioms.sh`: 723
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)

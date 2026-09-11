@@ -105,8 +105,9 @@ definition here keeps working. Two consequences worth knowing:
   include are listed in its header; nothing here needs them.
 - `#guard` evaluates, so a file whose checks *run* a definition needs a
   private `meta import` of the module defining it -- transitively, down to
-  whatever the interpreter has to call (`Sp1/HintRead.lean` names three
-  upstream modules this way; they import code, not names).
+  whatever the interpreter has to call. The files whose `#guard`s run
+  upstream code are `Sp1/HintRead.lean` (three modules) and `Extract/CFG.lean`
+  (two); they import code, not names.
 
 ## Genericity, and what is deliberately *not* abstracted
 
