@@ -36,6 +36,7 @@ public import Decomp.Sp1.HintRead
 public import Decomp.Reject
 public import Decomp.Refine
 public import Decomp.Extract.CFG
+public import Decomp.Extract.Body
 public import Decomp.Examples.Sp1Ecall
 public import Decomp.Examples.Countdown
 public import Decomp.Examples.CountdownMachine
