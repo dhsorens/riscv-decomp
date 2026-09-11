@@ -31,7 +31,7 @@ name = "Decomp"
 globs = ["Decomp", "Decomp.+"]
 
 # Not `Tools`: a library must not claim a generic top-level module name. A
-# consumer with its own `Tools` library -- zip-2005-asm has one -- would find
+# consumer with its own `Tools` library would find
 # `Tools.Foo` resolving into this package instead of its own, and the build
 # fails with a missing-file error naming a path inside this package.
 # The L3 refinement layer's abstract half: nondeterminism with failure, data

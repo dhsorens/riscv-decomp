@@ -4,7 +4,7 @@
   Wide stores into a byte region, and ownership with forgotten contents.
 
   `Decomp/Region/Bytes.lean` has the byte keystones. This file adds the three
-  wide stores this guest's emitted code uses -- `SW` at a 4-aligned index
+  wide stores compiled code emits into a buffer -- `SW` at a 4-aligned index
   (upstream's `bytesRegion_sw_at_within`), and `SH` at a 2-aligned index and
   `SD` at an 8-aligned index, which upstream never stated though it proved the
   algebra for both (`packBytes_setBytes_halfword`, `packBytes_setBytes_dword`)
@@ -16,9 +16,9 @@
   (`setBytes`, `packBytes_setBytes_word32`, `packBytes_setBytes_dword`) is
   imported unchanged, and the proofs are upstream's proofs.
 
-  `SD` at an aligned index is the one to notice: 8,041 of this guest's 41,784
-  instructions are `sd`, and a `memset`/`memcpy` body writes whole doublewords
-  into exactly this resource. The cell is replaced outright, so unlike `SW`
+  `SD` at an aligned index is the one to notice: it is the store RV64 code
+  emits for every spill and every whole-doubleword copy, and a
+  `memset`/`memcpy` body writes whole doublewords into exactly this resource. The cell is replaced outright, so unlike `SW`
   there is no read-modify-write and the payload is just `dwordBytes v`.
 -/
 

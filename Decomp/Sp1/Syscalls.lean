@@ -1,8 +1,8 @@
 /-
   Decomp.Sp1.Syscalls
 
-  SP1's syscalls as triples: the ones this guest's emitted code uses, minus
-  `HINT_READ` (`Decomp/Sp1/HintRead.lean`).
+  SP1's syscalls as triples: `HALT`, `COMMIT_DEFERRED_PROOFS`, `COMMIT` and
+  `HINT_LEN`. `HINT_READ` is in `Decomp/Sp1/HintRead.lean`.
 
   `ECALL` is one of the two instructions the backends disagree on, so nothing
   here transfers from ZisK; each triple is proved against `stepSp1` directly,

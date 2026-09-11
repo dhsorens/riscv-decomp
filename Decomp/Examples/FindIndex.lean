@@ -4,9 +4,9 @@
   The abstract half of a loop with **two exits**, one of them mid-body.
 
   `cpsTotal_loopB` exists for a body that may return from more than one place
-  -- `body : α → α ⊕ β`, a second `inr` branch being an early `break` -- and
-  until this file it had been driven only by a single-exit loop (`memset`'s
-  tail, downstream), which exercises the rule and not the reason for it. This
+  -- `body : α → α ⊕ β`, a second `inr` branch being an early `break` -- and a
+  single-exit loop (a `memset` tail, say) exercises the rule and not the reason
+  for it. This
   is the smallest loop the author could find whose body genuinely has two
   `inr` branches with **different machine paths behind them**:
 

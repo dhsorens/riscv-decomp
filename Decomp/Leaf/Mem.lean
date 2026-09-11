@@ -568,7 +568,7 @@ theorem lbu_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Wor
 
 /-- `LBU rd, off(rd)`: the same instruction with the address register as the
     destination, which is what LLVM emits for the last byte of a copy
-    (`memcpy` index 507 is `LBU x11, 0(x11)`).
+    (`LBU x11, 0(x11)`).
 
     It needs its own leaf rather than an instance of `lbu_on`: that theorem's
     postcondition keeps `rs1 ↦ᵣ v_addr`, and here the address register is gone

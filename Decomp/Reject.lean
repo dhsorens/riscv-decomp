@@ -6,18 +6,17 @@
   A soundness statement about a decision-procedure guest is quantified over
   every input, so it owes an argument for the code it does *not* verify
   functionally: those regions cannot reach the accept observation. For a Rust
-  guest that is the `core`/`alloc`/`fmt`/panic machinery -- in the project this
-  library was extracted from, 14% of the image, 5,857 instructions that need no
-  functional proof at all if this argument exists and cannot be dropped for any
-  reason if it does not.
+  guest that is the `core`/`alloc`/`fmt`/panic machinery -- typically a
+  substantial fraction of the image, which needs no functional proof at all if
+  this argument exists and cannot be dropped for any reason if it does not.
 
   ## What had to change first
 
   The argument does not go through against `cpsHalt`, whose observation is
   `(st.next s').isNone`. That is true of a real `HALT` *and* of every trap, so
   a state with no code at its pc and `a0 = 0` satisfies it exactly as an
-  accepting halt does -- and the cheapest case, the three `unimp` words, would
-  then need a proof that `a0 ≠ 0` at them rather than a definitional one.
+  accepting halt does -- and the cheapest case, an `unimp` word the loader left
+  undecoded, would then need a proof that `a0 ≠ 0` at them rather than a definitional one.
   `Decomp/Triple.lean`'s `SyscallHalted` is the fix, and
   `cpsHalt_of_cpsSyscallHalt` shows nothing was lost by pinning the reason.
   README "Observations" has the finding in full.
@@ -47,14 +46,13 @@
   docstring -- and the second half of this file refutes it two ways: from a `cpsSyscallHalt` whose postcondition pins `a0`
   (`not_accepted_of_cpsSyscallHalt`, composing with the halt leaf), and from an
   invariant that survives every step (`not_accepted_of_invariant`). Both have
-  their run-induction done once here. Neither has a consumer yet: the guest that
-  motivated them lives downstream, and the `a0 ↦ᵣ 1` at its panic halt is a
-  fact that guest owes.
+  their run-induction done once here. Neither has a consumer yet: the `a0 ↦ᵣ 1`
+  at a guest's panic halt is a fact that guest owes.
 
   ## What this does not do
 
   It does not say where a *particular* image has an undecodable word. That is
-  the downstream instance's job, and it is a measurement rather than a theorem:
+  the instantiating guest's job, and it is a measurement rather than a theorem:
   `Interpreter.load` builds `code` with an `Id.run do` loop over `HashMap`s
   (`Interpreter/Run.lean:123`), so there is nothing to prove a theorem about.
   What is kernel-checkable is everything downstream of `s.code s.pc = none`,

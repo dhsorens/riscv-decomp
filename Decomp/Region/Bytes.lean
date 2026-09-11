@@ -183,8 +183,7 @@ theorem bytesRegionOn_lbu_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
     The same fact as `bytesRegionOn_lbu_at` for a *different* instruction: there
     `rd ≠ rs1` is forced by the postcondition keeping `rs1 ↦ᵣ ptr`, and here
     there is no such conjunct to keep, because the register that held the
-    pointer now holds the byte. Two atoms in the footprint instead of three.
-    `memcpy` index 507 is exactly this. -/
+    pointer now holds the byte. Two atoms in the footprint instead of three. -/
 theorem bytesRegionOn_lbu_same_at (rd : Reg) (regionBase ptr : Word)
     (offset : BitVec 12) (base : Word)
     (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)

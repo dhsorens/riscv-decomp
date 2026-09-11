@@ -40,7 +40,7 @@ stream. Under SP1 this reports the `u64::MAX` sentinel in `t0`; under ZisK the
 id is unrecognised and the instruction is inert. -/
 
 /-- SP1 reports the sentinel: `t0` comes back `u64::MAX` because the hint stream
-    is empty. This is the guest's own "no more input" test -- `main.rs` does
+    is empty. This is how a guest tests for "no more input":
     `li a0, -1; ecall; beq t0, a0, …`. -/
 theorem hintLen_sentinel_sp1 (base : Word) :
     cpsTotalOn .sp1 base (base + 4) (CodeReq.singleton base .ECALL)

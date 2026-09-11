@@ -12,9 +12,10 @@ Read it today rather than from memory — nothing here is frozen.
 The L2 layer works end to end. A loop whose trip count depends on its input can
 be stated and proved with no fuel and no variant, on either backend, from one
 proof (`Decomp.Examples.CountdownMachine`). The instruction leaves and the byte
-regions are enough to drive real compiled code: downstream, `memset`'s tail loop
-and every path through `memcpy`'s ≤3-byte residual dispatch are proved against
-this library, over a source and a destination region separated by `**`.
+regions are shaped for compiled code -- byte and wide stores into a region,
+loads through one base register at an immediate offset, a source and a
+destination region separated by `**` -- but no compiler-emitted consumer lives
+in this repository yet.
 
 Both loop rules now have a consumer in this repository: `Countdown` drives the
 header-guarded `cpsTotal_loop`, and `FindIndex` drives `cpsTotal_loopB` through
@@ -52,10 +53,9 @@ on exhaustion, on both backends from one proof. `Cert.ofLoopB` packages the
 shape.
 
 What it does *not* exercise is memory. The body touches three registers, so
-there is no region coupling, no `x & 7 = 0 ↔ index % 8 = 0` bridge and no
-eleven-atom invariant, and no compiler emitted it. A compiled `memcpy`'s
-alignment loop, downstream, is still the first *real* consumer, and still owes
-those three things.
+there is no region coupling and no `x & 7 = 0 ↔ index % 8 = 0` alignment
+bridge, and no compiler emitted it. A compiler-emitted alignment loop over a
+region would be the first *real* consumer, and would owe all three.
 
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
@@ -84,7 +84,7 @@ complete and which is not.
 `Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
 leaf twins and the note; the region forms remain.
 
-### 3. The `OffText` discharges are restated per guest · lemmas landed, downstream open
+### 3. The `OffText` discharges are restated per guest · lemmas landed, no consumer
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
@@ -95,13 +95,12 @@ on the bound the region keystones already carry. `offText_of_above` asks for a
 word-aligned `hi`, which every real `.text` end has; `offText_of_above'` is the
 raw form.
 
-The downstream instances have **not** been rewritten as one-line corollaries.
-That is a change in `zip-2005-asm`, and until it lands this item's acceptance
-is unmet: the `example`s next to the lemmas are illustrations at made-up
-addresses, not the consumer.
+No guest's instances have yet been stated as one-line corollaries of these, so
+the acceptance is unmet: the `example`s next to the lemmas are illustrations at
+made-up addresses, not a consumer.
 
-*Acceptance:* `offText_of_below` and `offText_of_above` here, with the
-downstream instances as one-line corollaries. *Landed so far:* the lemmas here.
+*Acceptance:* `offText_of_below` and `offText_of_above` here, with a guest's
+instances as one-line corollaries. *Landed so far:* the lemmas here.
 
 ### 4. The halting half of the reject path · rules landed, no consumer
 
@@ -123,15 +122,14 @@ halt triple whose postcondition pins `a0`, composing with `halt_sp1Text` —
 ¬Accepted`), with the run induction done once. The generic stuck-state lemma
 `not_reaches_of_reaches_stuck` now covers both halves.
 
-Neither rule has a consumer. The guest whose panic path motivated them is
-downstream, and what it owes is a `cpsTotal` from each panic entry to its
-`HALT` with `x10 ↦ᵣ 1` — a proof about values through formatting code, which
-nothing here makes cheap.
+Neither rule has a consumer. A guest's panic path would owe a `cpsTotal` from
+each panic entry to its `HALT` with `x10 ↦ᵣ 1` — a proof about values through
+formatting code, which nothing here makes cheap.
 
 *Acceptance (met, modulo the convention):* a judgement composing with
 `cpsSyscallHalt` that concludes "this region cannot halt with `a0 = 0`" from
 block-local facts. *Remaining:* the adversary pass on `Accepted`, and a
-consumer, downstream.
+consumer.
 
 ### 5. The refinement layer (L3) · landed, one and two regions
 
@@ -250,8 +248,7 @@ says what was appended.
 
 This library pins Lean v4.33.0 because `riscv-zkvm` does
 (`fixedToolchain = true`). Anything that wants to share a toolchain with a
-Mathlib-based project on v4.33.1 needs upstream to move first. Carried over from
-`zip-2005-asm` issue #23.
+Mathlib-based project on v4.33.1 needs upstream to move first.
 
 ### 10. Structural rules are added on demand
 

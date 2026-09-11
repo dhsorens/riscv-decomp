@@ -293,9 +293,9 @@ end Terminates
 
 Everything above assumes the shape TR-765 assumes: the guard is decided at the
 *header*, and the body is a straight line from the body entry back to it. LLVM
-does not emit that shape for a loop with an early `break`. In a compiled
-`memcpy`, the alignment loop tests its condition **five instructions into the
-body** and leaves the loop from there, and the word-copy loops are the same.
+does not emit that shape for a loop with an early `break`. In a typical compiled
+`memcpy`, the alignment loop tests its condition **part-way into the body** and
+leaves the loop from there, and the word-copy loops are the same.
 This section closes that gap.
 
 The generalisation is to stop separating the guard from the body:
@@ -328,8 +328,8 @@ Three things change, and it is worth being explicit about them:
   `RunsTo r side n x y`, and `y` says which exit was taken -- so the label can
   be `exitOf y` (`cpsTotal_loopB_exits`), and two `inr` branches may land on
   two different addresses with no join between them. `cpsTotal_loopB` is the
-  constant-label instance, which is all a compiler's own output ever needs
-  (`memcpy`'s mid-body `BEQ` and its bottom `JAL` both land on `0x7801b520`).
+  constant-label instance, which is all a compiler's own output ever needs (a
+  compiled loop's mid-body branch and its bottom jump land on one join label).
 -/
 
 /-- One extracted loop region whose body may return instead of continuing.

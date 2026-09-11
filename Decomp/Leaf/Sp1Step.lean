@@ -8,8 +8,8 @@
   instruction class:
 
   * **Plain** (not memory, not `ECALL`, not `EBREAK`): agreement on every state,
-    upstream's `stepSp1_eq_step_of_fetch`. Covers 18 of this guest's 26
-    constructors.
+    upstream's `stepSp1_eq_step_of_fetch`. Covers the eighteen non-memory
+    constructors `Decomp/Leaf/Core.lean` transfers.
   * **Loads**: agreement on every state where ZisK's access predicate holds,
     because ZisK's address map is strictly inside SP1's. Seven constructors.
   * **Stores**: agreement where ZisK's predicate holds *and* the target holds
