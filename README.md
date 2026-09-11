@@ -38,12 +38,12 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, and `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec. |
 | `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; and the SP1-vs-ZisK ecall regression. |
 
-The L3 layer's abstract half is a separate library, `Refine`, which imports nothing from `Rv64` or `Decomp`:
+The L3 layer's abstract half is a separate library, `DecompRefine`, which imports nothing from `Rv64` or `Decomp`:
 
 | Module | What it is |
 | --- | --- |
-| `Refine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
-| `Refine.Examples.Search` | A linear-search specification and its abstract-correctness theorem, with no machine in sight. |
+| `DecompRefine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
+| `DecompRefine.Examples.Search` | A linear-search specification and its abstract-correctness theorem, with no machine in sight. |
 
 ## Why no fuel
 
@@ -127,7 +127,7 @@ structure literal.
 
 ## Trust
 
-Every declaration under `Decomp`, `Refine` and `DecompTools` rests on exactly three axioms:
+Every declaration under `Decomp`, `DecompRefine` and `DecompTools` rests on exactly three axioms:
 `propext`, `Classical.choice`, `Quot.sound`. `scripts/check-axioms.sh` reads what
 the kernel actually recorded, rather than trusting this paragraph;
 `scripts/check-forbidden-tactics.sh` is the fast source scan that keeps
