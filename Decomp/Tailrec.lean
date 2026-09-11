@@ -49,6 +49,10 @@
   Lean and imports nothing from `Rv64`.
 -/
 
+module
+
+@[expose] public section
+
 namespace Decomp
 
 universe u v

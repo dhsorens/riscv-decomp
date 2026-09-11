@@ -29,8 +29,12 @@
   the step lemmas in `Sp1Step.lean`.
 -/
 
-import Decomp.Leaf.Mem
-import Decomp.Leaf.Sp1Text
+module
+
+public import Decomp.Leaf.Mem
+public import Decomp.Leaf.Sp1Text
+
+@[expose] public section
 
 namespace Decomp
 

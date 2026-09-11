@@ -45,6 +45,27 @@ file as the plan.
   function at the guest's curve/field ids is a wrong answer. No
   per-function RISC-V triple catches it.
 
+## Module system
+
+- **A `module` cannot import a legacy file, and upstream's aggregators
+  are legacy.** `import RiscvZkvm.Rv64` / `RiscvZkvm.Rv64.Logic` fail
+  from a `module` with "cannot import non-`module`". Use
+  `public import Decomp.Upstream`, which re-exports their module-system
+  contents; the legacy stragglers (`CPSCall`, `MemSat`,
+  `CodeReqExtents`, `WP.Examples`, `Tactics.WP`) are listed in its
+  header and nothing here uses them.
+- **`#guard` needs `meta import`, transitively.** "Invalid `meta`
+  definition … `X` is not accessible here" means the check *runs* `X`;
+  add `meta import <module defining X>`. "Could not find native
+  implementation of external declaration `Y`" is the same thing one
+  level down -- `Y` is called by `X` and lives in a module you did not
+  meta-import (`hintRead` → `dwordBytes` in `MemRegionWriteWide`,
+  `packBytes` in `ByteOps`). Private `meta import` is enough; nothing
+  downstream needs the code.
+- **Under `module`, the axiom census shrinks by the `match_*`
+  matchers.** They are internal now and were never proofs. Compare
+  names, not counts, when the number moves after a structural change.
+
 ## Proving over the SP1 stepper
 
 - **Transfer, don't restate.** A one-step ZisK `cpsTripleWithin` already

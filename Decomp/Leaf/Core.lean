@@ -44,7 +44,11 @@
   constructors -- comes through here.
 -/
 
-import Decomp.Triple
+module
+
+public import Decomp.Triple
+
+@[expose] public section
 
 namespace Decomp
 

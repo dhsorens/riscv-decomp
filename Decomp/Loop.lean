@@ -62,8 +62,12 @@
   loop.
 -/
 
-import Decomp.Triple
-import Decomp.Tailrec
+module
+
+public import Decomp.Triple
+public import Decomp.Tailrec
+
+@[expose] public section
 
 namespace Decomp
 

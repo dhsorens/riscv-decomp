@@ -21,8 +21,12 @@
   Read against upstream, the proofs are the same proofs. That is the point.
 -/
 
-import Decomp.Leaf.Mem
-import RiscvZkvm.Rv64.Logic
+module
+
+public import Decomp.Leaf.Mem
+public import Decomp.Upstream
+
+@[expose] public section
 
 namespace Decomp
 

@@ -40,7 +40,13 @@
   right trade -- the alternative is a `side` per `inr` branch.
 -/
 
-import Decomp.Certificate
+module
+
+public import Decomp.Certificate
+-- `#guard` evaluates, so the definitions it runs must be importable as code.
+meta import Decomp.Tailrec
+
+@[expose] public section
 
 namespace Decomp.Examples.FindIndex
 

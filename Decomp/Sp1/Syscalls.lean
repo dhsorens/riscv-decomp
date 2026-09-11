@@ -35,7 +35,11 @@
   against the model with `#guard`s.
 -/
 
-import Decomp.Leaf.Sp1Text
+module
+
+public import Decomp.Leaf.Sp1Text
+
+@[expose] public section
 
 namespace Decomp
 

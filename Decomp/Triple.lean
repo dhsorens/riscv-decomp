@@ -39,7 +39,11 @@
   porting them before something needs them would be waste. Add on demand.
 -/
 
-import Decomp.Stepper
+module
+
+public import Decomp.Stepper
+
+@[expose] public section
 
 namespace Decomp
 

@@ -26,8 +26,10 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 95 jobs, zero warnings. `scripts/check-axioms.sh`: 482
-declarations on the three documented axioms.
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 454
+declarations on the three documented axioms. (It was 482 before the move to the
+module system; the 28 that left the census are compiler-generated `match_*`
+matchers, which are internal under `module` and carry no proof of their own.)
 
 ---
 

@@ -31,7 +31,13 @@
   should have to know there is a machine.
 -/
 
-import Decomp.Certificate
+module
+
+public import Decomp.Certificate
+-- `#guard` evaluates, so the definitions it runs must be importable as code.
+meta import Decomp.Tailrec
+
+@[expose] public section
 
 namespace Decomp.Examples.Countdown
 
