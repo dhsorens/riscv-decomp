@@ -29,7 +29,7 @@ against `searchSpec` in two theorems that do not know about each other. `Countdo
 two specs. Item 5 has the details and what is still missing (a genuinely
 nondeterministic spec).
 
-`lake build`: 97 jobs, zero warnings. `scripts/check-axioms.sh`: 750
+`lake build`: 97 jobs, zero warnings. `scripts/check-axioms.sh`: 758
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -153,11 +153,16 @@ two regions back to back, glued by `extendCode` / `frameR` / `seq` with one
 `Cert.Refines.seq` from the two halves' own refinement theorems — the consumer
 `bind_refine` was missing.
 
-What is missing: a spec with genuine nondeterminism. Both specs here are
-determinate on their domain, so `⇓R` is only ever exercised against a single
-acceptable result, and the failure flag only as a precondition. A spec that
-admits several answers, refined by an implementation that picks one, is the
-next instance to write.
+Nondeterminism is exercised too: `countSpecLe` accepts any value at or below
+the start, `pipelineSpecLe` sequences the search after it and admits several
+answers (`pipelineSpecLe_two_answers`), and the same two-region certificate
+refines it (`cert_refines_le`) with only the first stage's refinement theorem
+restated. The failure flag is used only as a precondition throughout, which is
+what it is for.
+
+What is missing: a second project. Every spec here was written next to the
+code it describes; the layer's claim -- that the abstract half can be taken
+without the machine -- is tested only when someone does so.
 
 *Acceptance (met):* for one function, an abstract-correctness proof and a
 refinement proof that are two separate, independently checkable theorems.

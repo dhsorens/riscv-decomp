@@ -25,7 +25,7 @@ scripts/check-forbidden-tactics.sh
 
 | Module | What it is |
 | --- | --- |
-| `Decomp.Upstream` | The single public-import hub for `riscv-zkvm`: re-exports the module-system contents of its two legacy aggregators. (The only other mentions of upstream are private `meta import`s where a `#guard` runs an upstream definition.) |
+| `Decomp.Upstream` | The single public-import hub for `riscv-zkvm`: re-exports the module-system contents of its two legacy aggregators. (The only other *imports* of upstream are private `meta import`s where a `#guard` runs an upstream definition; `open RiscvZkvm.Rv64` is a namespace, not an import.) |
 | `Decomp.Stepper` | The two-field interface a backend owes: `next`, and "execution never rewrites code". Everything below is stated over it, so ZisK, SP1 and any future backend instantiate rather than fork. |
 | `Decomp.Triple` | The judgements: `cpsWithin` (bounded), `cpsTotal` (Myreen's `∃k`), `cpsBranch`, `cpsHalt`, `cpsSyscallHalt`. 30-odd structural rules — frame, sequence, weaken, extend-code — restated over a `Stepper`. |
 | `Decomp.Tailrec` | Conditional termination as an *inductive*, so the least fixpoint is termination and Lean's generated `.rec` is TR-765's derived induction principle. Two shapes: `Rec` (header-guarded) and `RecB` (`body : α → α ⊕ β`, for a body that may return). |

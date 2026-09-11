@@ -137,4 +137,39 @@ theorem pipeline_meets_spec (b : Backend) (base : Word) {n stop e : Nat}
     ⟨Countdown.terminates hn, find_terminates_zero he he0⟩
     (pipelineSpec_not_fails hn he0)
 
+/-! ## Against the nondeterministic spec
+
+Same certificate, same second-stage refinement, a looser first-stage spec:
+`countSpecLe` accepts any value at or below the start, so `pipelineSpecLe`
+admits several answers (`pipelineSpecLe_two_answers`) and the machine's one
+run is related to one of them. Nothing about the certificate changes; only
+`c₁`'s refinement theorem is restated against the larger set. -/
+
+/-- The countdown refines the loose spec too: `0 ≤ n`. -/
+theorem c₁_refines_le (hst : st.PlainAgree) (base : Word) (stop e : Nat) :
+    (c₁ hst base stop e).Refines countSpecLe Eq := by
+  intro n _
+  show Nres.ret 0 ≤ Nres.assert (n < 2 ^ 64) (Nres.conc Eq (Nres.spec (· ≤ n)))
+  exact Nres.le_assert_of_pre fun _ => Nres.ret_le_conc (Nat.zero_le n) rfl
+
+theorem cert_refines_le (hst : st.PlainAgree) (base : Word) {stop e : Nat}
+    (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) :
+    (cert hst base hstop he).Refines (fun n => pipelineSpecLe n stop e) FindIndex.R :=
+  Cert.Refines.seq (c₁_refines_le hst base stop e)
+    (fun y z hyz _ => by subst hyz; exact FindIndex.result_refines stop e y)
+
+/-- The end-to-end statement against the nondeterministic spec. The domain
+    condition is now `n < e`: every start the spec allows must lie below the
+    end of the range. -/
+theorem pipeline_meets_specLe (b : Backend) (base : Word) {n stop e : Nat}
+    (hn : n < 2 ^ 64) (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) (hne : n < e) :
+    cpsTotalOn b base (base + 12 + 16) (cr base)
+      (Countdown.I n ** F stop e)
+      (specPost (fun r => FindIndex.Q stop e r ** (.x0 ↦ᵣ (0 : Word))) FindIndex.R
+        (pipelineSpecLe n stop e)) :=
+  (cert (Backend.plainAgree b) base hstop he).refines_sound
+    (cert_refines_le (Backend.plainAgree b) base hstop he) n
+    ⟨Countdown.terminates hn, find_terminates_zero he (by omega)⟩
+    (pipelineSpecLe_not_fails hn hne)
+
 end Decomp.Examples.Pipeline
