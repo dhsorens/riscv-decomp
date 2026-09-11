@@ -34,7 +34,7 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Leaf.*` | One-instruction specs. `Core` transfers upstream's ZisK leaves to any `PlainAgree` stepper (18 of 26 constructors, no restatement). `Mem` re-proves the twelve load/store forms with the **cell as a parameter**, plus the seven `rd = rs1` load twins (`*_same_on`), whose two-atom footprint framing cannot fake. `Sp1Step`/`Sp1Text`/`Sp1Mem` are SP1's instances, including the code-window invariant a store guard needs. |
 | `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
-| `Decomp.Reject` | Showing a region *cannot* accept — the trapping half, on the observation that distinguishes a halt from a trap. |
+| `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
 | `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code; and the SP1-vs-ZisK ecall regression. |
 
 ## Why no fuel

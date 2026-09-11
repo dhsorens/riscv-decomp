@@ -26,7 +26,7 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 473
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 480
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -93,19 +93,29 @@ realistic numbers.
 *Acceptance (met here):* the four lemmas. *Remaining downstream:* replace the
 per-guest restatements with one-line instances.
 
-### 4. The halting half of the reject path · medium
+### 4. The halting half of the reject path · rules landed, no consumer
 
 `Decomp.Reject` discharges the trapping half: a run that reaches a state with no
 code at its pc never reaches an accepting halt. Panic machinery generally does
 **not** trap — it reaches the `HALT` syscall with a nonzero `a0`, so it *is*
-`SyscallHalted`, and no argument in that file touches it.
+`SyscallHalted`.
 
-What it needs is `a0 ≠ 0` at those halts: a proof about *values* rather than
-about control, and the first place this library would need vocabulary for
-"every path from here carries a nonzero register". There is none.
+`Accepted s := SyscallHalted s ∧ a0 = 0` is now the observation that tells the
+two apart, and two rules refute it: `not_accepted_of_cpsSyscallHalt` (from a
+halt triple whose postcondition pins `a0`, composing with `halt_sp1Text` —
+`not_accepted_of_halt_sp1Text` is the SP1 one-liner) and
+`not_accepted_of_invariant` (`J` initially, `J` preserved by every step, `J →
+¬Accepted`), with the run induction done once. The generic stuck-state lemma
+`not_reaches_of_reaches_stuck` now covers both halves.
 
-*Acceptance:* a judgement that composes with `cpsSyscallHalt` and lets a caller
-conclude "this region cannot halt with `a0 = 0`" from block-local facts.
+Neither rule has a consumer. The guest whose panic path motivated them is
+downstream, and what it owes is a `cpsTotal` from each panic entry to its
+`HALT` with `x10 ↦ᵣ 1` — a proof about values through formatting code, which
+nothing here makes cheap.
+
+*Acceptance (met):* a judgement composing with `cpsSyscallHalt` that concludes
+"this region cannot halt with `a0 = 0`" from block-local facts. *Remaining:* a
+consumer, downstream.
 
 ### 5. The refinement layer (L3) · large
 
