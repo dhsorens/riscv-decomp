@@ -21,12 +21,15 @@ header-guarded `cpsTotal_loop`, and `FindIndex` drives `cpsTotal_loopB` through
 both of its `inr` branches -- a top-of-body break and a bottom exit converging
 on one label. Neither touches memory.
 
-What is *not* here is anything above L2. Every statement is machine-level: it
-says what the code does to registers and memory, never that it meets a
-specification. The refinement layer that would close that gap does not exist
-(item 5).
+Above L2 there is now a first L3: `DecompRefine` (a separate library, no machine in
+it) gives nondeterminism-with-failure specs and `⇓R` refinement, and
+`Decomp.Refine` ties a certificate's extracted function to a spec and desugars
+the pair to a `cpsTotal` triple against the spec. `FindIndex` is refined
+against `searchSpec` in two theorems that do not know about each other. What is
+still missing there is a program of several regions -- `bind_refine` has no
+consumer (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 485
+`lake build`: 95 jobs, zero warnings. `scripts/check-axioms.sh`: 553
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -130,18 +133,28 @@ composing with `cpsSyscallHalt` that concludes "this region cannot halt with
 `a0 = 0`" from block-local facts. *Remaining:* the adversary pass on
 `SyscallHalted`, which `Accepted` rests on, and a consumer, downstream.
 
-### 5. The refinement layer (L3) · large
+### 5. The refinement layer (L3) · landed for one function
 
-Every statement here is machine-level. Relating an extracted function to an
-abstract specification needs an `nres`-like nondeterminism-with-failure monad, a
-`⇓R` refinement relation, the two composition lemmas, and a predicate desugaring
-to a `cpsTotal` triple.
+`DecompRefine.Nres` is the abstract half: a spec is a may-fail flag plus a result set
+(`fail` is the top of the order, so a precondition is a spec that fails outside
+its domain), `conc R` is `⇓R`, and `refine_trans` / `bind_refine` are the two
+composition lemmas. It imports nothing from `Rv64` or `Decomp`. `Decomp.Refine`
+is the bridge: `Cert.Refines c spec R` and the desugaring `Cert.refines_sound`
+to a `cpsTotal` triple whose postcondition names the spec and not `fn`.
 
-It should be a separate `lean_lib` whose abstract half imports nothing from
-`Rv64`, so it can be reused by a second project without dragging the machine in.
+The worked instance is `FindIndex`: `searchSpec_ok_iff` (abstract correctness,
+on the `DecompRefine` side) and `result_refines` (refinement, about `result` alone)
+are independent theorems, composed in `find_meets_spec`.
 
-*Acceptance:* for one function, an abstract-correctness proof and a refinement
-proof that are two separate, independently checkable theorems.
+What is missing: a consumer for `bind_refine`. One loop against one spec never
+sequences, so the lemma that makes the layer scale to a program of several
+regions is a statement without a consumer, and `Cert.seq` and `Nres.bind` have
+not been shown to line up. That is the next slice here, and it wants a
+two-region example.
+
+*Acceptance (met):* for one function, an abstract-correctness proof and a
+refinement proof that are two separate, independently checkable theorems.
+*Remaining:* `bind_refine` against `Cert.seq`.
 
 ### 6. The extractor · large · research risk
 

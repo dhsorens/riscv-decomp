@@ -35,12 +35,12 @@ open Lean
 
 /-- Declarations under these prefixes are audited: everything this repository
     owns. -/
-def scanPrefixes : List Name := [`Decomp, `DecompTools]
+def scanPrefixes : List Name := [`Decomp, `DecompRefine, `DecompTools]
 
 /-- Modules to import. These two roots transitively cover the whole owned
     tree. -/
 def scanModules : Array Import :=
-  #[{ module := `Decomp }, { module := `DecompTools }]
+  #[{ module := `Decomp }, { module := `DecompRefine }, { module := `DecompTools }]
 
 /-- The axioms this repository accepts, and why.
 

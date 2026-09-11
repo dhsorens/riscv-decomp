@@ -16,7 +16,7 @@ it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
 live.
 
 ```
-lake build            # 89 jobs, zero warnings
+lake build            # 95 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -35,7 +35,15 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
-| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code; and the SP1-vs-ZisK ecall regression. |
+| `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, and `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec. |
+| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; and the SP1-vs-ZisK ecall regression. |
+
+The L3 layer's abstract half is a separate library, `DecompRefine`, which imports nothing from `Rv64` or `Decomp`:
+
+| Module | What it is |
+| --- | --- |
+| `DecompRefine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
+| `DecompRefine.Examples.Search` | A linear-search specification and its abstract-correctness theorem, with no machine in sight. |
 
 ## Why no fuel
 
@@ -119,7 +127,7 @@ structure literal.
 
 ## Trust
 
-Every declaration under `Decomp` and `DecompTools` rests on exactly three axioms:
+Every declaration under `Decomp`, `DecompRefine` and `DecompTools` rests on exactly three axioms:
 `propext`, `Classical.choice`, `Quot.sound`. `scripts/check-axioms.sh` reads what
 the kernel actually recorded, rather than trusting this paragraph;
 `scripts/check-forbidden-tactics.sh` is the fast source scan that keeps

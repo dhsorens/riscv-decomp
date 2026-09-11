@@ -18,5 +18,5 @@ cd "$ROOT"
 # The sweep imports the built oleans, so the libraries have to exist; and
 # `lake env` is what puts them on LEAN_PATH -- the bare binary cannot find
 # `Decomp.olean` on its own.
-lake build Decomp DecompTools axiomsweep >/dev/null
+lake build Decomp DecompRefine DecompTools axiomsweep >/dev/null
 exec lake env ./.lake/build/bin/axiomsweep "$@"

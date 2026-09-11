@@ -1,6 +1,6 @@
 name = "riscv-decomp"
 version = "0.1.0"
-defaultTargets = ["Decomp", "DecompTools"]
+defaultTargets = ["Decomp", "DecompRefine", "DecompTools"]
 
 # `riscv-zkvm` supplies the RV64 model, `Rv64.Logic`'s separation logic, and the
 # SP1 backend. It is a PERMANENT dependency on the `sp1-backend` branch, not a
@@ -30,10 +30,19 @@ rev = "sp1-backend"
 name = "Decomp"
 globs = ["Decomp", "Decomp.+"]
 
+# The L3 refinement layer's abstract half: nondeterminism with failure, data
+# refinement, and a worked specification. Imports nothing from `Rv64` or
+# `Decomp`, so a second project can take it without dragging the machine in.
+# The bridge to an L2 certificate is `Decomp/Refine.lean`, inside `Decomp`.
+# Not `Refine`, for the reason `DecompTools` is not `Tools` (below).
+[[lean_lib]]
+name = "DecompRefine"
+globs = ["DecompRefine", "DecompRefine.+"]
+
 # Not `Tools`: a library must not claim a generic top-level module name. A
-# consumer with its own `Tools` library -- zip-2005-asm has one -- would find
-# `Tools.Foo` resolving into this package instead of its own, and the build
-# fails with a missing-file error naming a path inside this package.
+# consumer with its own `Tools` library would find `Tools.Foo` resolving into
+# this package instead of its own, and the build fails with a missing-file
+# error naming a path inside this package.
 [[lean_lib]]
 name = "DecompTools"
 
