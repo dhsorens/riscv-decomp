@@ -37,16 +37,25 @@
   is itself stuck. Without it the run could be imagined to accept *before*
   reaching the stuck state.
 
+  ## The halting half
+
+  Panic machinery generally does not trap -- it reaches the `HALT` syscall with
+  a **nonzero** `a0`, so it *is* `SyscallHalted`, and the two facts above say
+  nothing about it. `Accepted` (halted by the syscall, *and* `a0 = 0`) is the
+  observation that separates the two -- by the **host-ABI convention** that
+  `a0` is the exit code, which the machine model does not know; README "Trust"
+  records it and the docstring says what it does and does not claim -- and the
+  second half of this file refutes it two ways: from a `cpsSyscallHalt` whose
+  postcondition pins `a0`
+  (`not_accepted_of_cpsSyscallHalt`, composing with the halt leaf), and from an
+  invariant that survives every step (`not_accepted_of_invariant`). Both have
+  their run-induction done once here. Neither has a consumer yet: the guest that
+  motivated them lives downstream, and the `a0 ↦ᵣ 1` at its panic halt is a
+  fact that guest owes.
+
   ## What this does not do
 
-  It discharges the **trapping** half only: an address the loader left
-  undecoded. Panic machinery generally does not trap -- it reaches the `HALT`
-  syscall with a **nonzero** `a0`, so it *is* `SyscallHalted`, and no argument
-  in this file touches it. That case needs `a0 ≠ 0` at those halts, which is a
-  proof about values rather than about control, and this library has no
-  vocabulary for it yet (ROADMAP, "The halting half of the reject path").
-
-  Nor does it say where a *particular* image has an undecodable word. That is
+  It does not say where a *particular* image has an undecodable word. That is
   the downstream instance's job, and it is a measurement rather than a theorem:
   `Interpreter.load` builds `code` with an `Id.run do` loop over `HashMap`s
   (`Interpreter/Run.lean:123`), so there is nothing to prove a theorem about.
@@ -91,29 +100,141 @@ theorem not_syscallHalted_of_code_none {s : MachineState} (h : s.code s.pc = non
     determinism collapses them. It is a fact about the backend
     (`Decomp/Sp1/Syscalls.lean`'s `stepSp1_isNone_of_syscallHalted` for SP1),
     deliberately not a `Stepper` field. -/
-theorem not_accepts_of_reaches_stuck {st : Stepper} {s₀ t : MachineState} {j : Nat}
+theorem not_reaches_of_reaches_stuck {st : Stepper} {Acc : MachineState → Prop}
+    {s₀ t : MachineState} {j : Nat}
     (hreach : st.iter j s₀ = some t)
-    (hstuck : st.next t = none) (hns : ¬ SyscallHalted t)
-    (htrap : ∀ u, SyscallHalted u → (st.next u).isNone) :
-    ∀ k s', st.iter k s₀ = some s' → ¬ SyscallHalted s' := by
-  intro k s' hk hhalt
+    (hstuck : st.next t = none) (hnt : ¬ Acc t)
+    (hAcc : ∀ u, Acc u → (st.next u).isNone) :
+    ∀ k s', st.iter k s₀ = some s' → ¬ Acc s' := by
+  intro k s' hk hacc
   rcases Nat.le_total j k with hle | hle
   · -- The run got stuck first, so `s'` is that stuck state.
     obtain ⟨d, hd⟩ := Nat.exists_eq_add_of_le hle
     subst hd
     rw [Stepper.iter_add, hreach, Option.bind] at hk
-    exact hns (iter_eq_self_of_next_none hstuck hk ▸ hhalt)
-  · -- The run accepted first -- but an accepting halt is stuck, so the state
-    -- reached later is that same state, and it is not a halt.
+    exact hnt (iter_eq_self_of_next_none hstuck hk ▸ hacc)
+  · -- The run accepted first -- but an accepting state is stuck, so the state
+    -- reached later is that same state, and it is not accepting.
     obtain ⟨d, hd⟩ := Nat.exists_eq_add_of_le hle
     subst hd
     rw [Stepper.iter_add, hk, Option.bind] at hreach
-    have hs'stuck : st.next s' = none := Option.isNone_iff_eq_none.mp (htrap s' hhalt)
-    exact hns (iter_eq_self_of_next_none hs'stuck hreach ▸ hhalt)
+    have hs'stuck : st.next s' = none := Option.isNone_iff_eq_none.mp (hAcc s' hacc)
+    exact hnt (iter_eq_self_of_next_none hs'stuck hreach ▸ hacc)
+
+/-- The trapping half's instance: `Acc := SyscallHalted`. -/
+theorem not_accepts_of_reaches_stuck {st : Stepper} {s₀ t : MachineState} {j : Nat}
+    (hreach : st.iter j s₀ = some t)
+    (hstuck : st.next t = none) (hns : ¬ SyscallHalted t)
+    (htrap : ∀ u, SyscallHalted u → (st.next u).isNone) :
+    ∀ k s', st.iter k s₀ = some s' → ¬ SyscallHalted s' :=
+  not_reaches_of_reaches_stuck hreach hstuck hns htrap
+
+/-! ## The halting half: halted, but with the wrong exit code
+
+Panic machinery does not trap. It runs through formatting and reaches the
+`HALT` syscall with a **nonzero** `a0`, so it *is* `SyscallHalted`, and the
+argument above says nothing about it. What rules it out is a fact about a
+*value*: the exit code the halt carries.
+
+`Accepted` is the observation a soundness theorem's accepting-run antecedent
+should have: halted by the halt syscall, exit code zero. The two rules below
+are the two ways to refute it -- from a triple whose halt postcondition pins
+`a0`, or from an invariant that survives every step -- with the induction over
+the run done once here rather than per guest. -/
+
+/-- **Accepted, as a convention**: halted by the halt syscall, with `a0 = 0`.
+
+    `SyscallHalted` is the machine's own event -- `stepSp1` stops on `t0 = 0`.
+    That `a0` is the *exit code*, and that zero means the host accepts, is the
+    **host ABI**, not the step relation: `Program.lean`'s `HALT` macro puts the
+    exit code in `a0`, and the interpreter reports `a0` as the guest's exit
+    value, but the machine model assigns `a0` no meaning at a halt. So every
+    `¬ Accepted` below is a theorem about this convention -- the one recorded
+    in README "Trust": sound as a *protocol* definition, not as a machine fact.
+    A prover will still prove any `HALT`, whatever `a0` holds, and `COMMIT` is
+    a separate, unobservable conjunct. A backend or consumer that treats a
+    nonzero halt as success makes these rules true of the definition and false
+    of that verifier. -/
+def Accepted (s : MachineState) : Prop :=
+  SyscallHalted s ∧ s.getReg .x10 = 0
+
+theorem Accepted.syscallHalted {s : MachineState} (h : Accepted s) : SyscallHalted s := h.1
+
+/-- **From a halt triple.** If a region's run halts by the syscall with `Q`
+    holding, and `Q` says `a0 ≠ 0`, then no state of that run -- before or
+    after the halt -- is `Accepted`.
+
+    This is the judgement that composes with `cpsSyscallHalt`: a panic path is
+    `cpsTotal` to the halt site, then `halt_sp1Text exitCode`, then this. `hQ`
+    is the block-local fact; `htrap` is the backend's "a halt is stuck". -/
+theorem not_accepted_of_cpsSyscallHalt {st : Stepper} {entry : Word} {cr : CodeReq}
+    {P Q : Assertion}
+    (h : cpsSyscallHalt st entry cr P Q)
+    (hQ : ∀ s, Q.holdsFor s → s.getReg .x10 ≠ 0)
+    (htrap : ∀ u, SyscallHalted u → (st.next u).isNone) :
+    ∀ R : Assertion, R.pcFree → ∀ s, st.inv s → cr.SatisfiedBy s → (P ** R).holdsFor s →
+      s.pc = entry → ∀ k s', st.iter k s = some s' → ¬ Accepted s' := by
+  intro R hR s hinv hcr hPR hpc
+  obtain ⟨j, t, hreach, hhalt, hQR⟩ := h R hR s hinv hcr hPR hpc
+  exact not_reaches_of_reaches_stuck hreach
+    (Option.isNone_iff_eq_none.mp (htrap t hhalt))
+    (fun hacc => hQ t (holdsFor_sepConj_elim_left hQR) hacc.2)
+    (fun u hu => htrap u hu.1)
+
+/-- The shape the `HALT` leaf produces: `(x5 ↦ᵣ 0) ** (x10 ↦ᵣ exitCode)`. A
+    nonzero exit code is the whole block-local fact. -/
+theorem not_accepted_of_cpsSyscallHalt_exitCode {st : Stepper} {entry : Word} {cr : CodeReq}
+    {P : Assertion} {exitCode : Word}
+    (h : cpsSyscallHalt st entry cr P ((.x5 ↦ᵣ (0 : Word)) ** (.x10 ↦ᵣ exitCode)))
+    (hne : exitCode ≠ 0)
+    (htrap : ∀ u, SyscallHalted u → (st.next u).isNone) :
+    ∀ R : Assertion, R.pcFree → ∀ s, st.inv s → cr.SatisfiedBy s → (P ** R).holdsFor s →
+      s.pc = entry → ∀ k s', st.iter k s = some s' → ¬ Accepted s' :=
+  not_accepted_of_cpsSyscallHalt h
+    (fun _ hQ => by
+      rw [holdsFor_regIs.mp (holdsFor_sepConj_elim_right hQ)]; exact hne)
+    htrap
+
+/-- **From an invariant.** If `J` holds at the start, survives every step, and
+    excludes acceptance, no state of the run is `Accepted`. The induction over
+    the run, done once; a guest supplies `J` ("`a0` is nonzero and stays so",
+    say) and the three block-local facts. -/
+theorem not_accepted_of_invariant {st : Stepper} {J : MachineState → Prop} {s₀ : MachineState}
+    (h0 : J s₀)
+    (hstep : ∀ s s', J s → st.next s = some s' → J s')
+    (hns : ∀ s, J s → ¬ Accepted s) :
+    ∀ k s', st.iter k s₀ = some s' → ¬ Accepted s' := by
+  intro k
+  induction k generalizing s₀ with
+  | zero => intro s' h; cases h; exact hns _ h0
+  | succ k ih =>
+    intro s' h
+    rw [Stepper.iter_succ] at h
+    cases hn : st.next s₀ with
+    | none => rw [hn] at h; simp at h
+    | some s₁ => rw [hn] at h; exact ih (hstep _ _ h0 hn) s' h
 
 /-! ## The SP1 instance -/
 
 variable {lo hi : Nat}
+
+/-- The halting half on the confined SP1 stepper: a region that reaches the
+    `HALT` leaf with a nonzero exit code never accepts. `hreach` is the
+    region's own `cpsTotal` to the halt site, with the halt leaf's precondition
+    as its postcondition. -/
+theorem not_accepted_of_halt_sp1Text {entry haltSite : Word} {cr : CodeReq} {P : Assertion}
+    {exitCode : Word} (hne : exitCode ≠ 0)
+    (hcr : cr haltSite = some .ECALL)
+    (hreach : cpsTotal (Sp1Text lo hi) entry haltSite cr P
+      ((.x5 ↦ᵣ (0 : Word)) ** (.x10 ↦ᵣ exitCode))) :
+    ∀ R : Assertion, R.pcFree → ∀ s, CodeWithin lo hi s → cr.SatisfiedBy s →
+      (P ** R).holdsFor s → s.pc = entry →
+      ∀ k s', (Sp1Text lo hi).iter k s = some s' → ¬ Accepted s' :=
+  not_accepted_of_cpsSyscallHalt_exitCode
+    (cpsTotal_seq_cpsSyscallHalt_same_cr hreach
+      (cpsSyscallHalt_extend_code (CodeReq.singleton_mono hcr) (halt_sp1Text exitCode haltSite)))
+    hne
+    (fun _ h => by rw [Sp1Text_next]; exact stepSp1_isNone_of_syscallHalted h)
 
 /-- An address the loader left undecoded traps: `stepSp1` matches on
     `s.code s.pc` first. -/

@@ -26,7 +26,7 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 473
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 480
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -100,19 +100,35 @@ addresses, not the consumer.
 *Acceptance:* `offText_of_below` and `offText_of_above` here, with the
 downstream instances as one-line corollaries. *Landed so far:* the lemmas here.
 
-### 4. The halting half of the reject path · medium
+### 4. The halting half of the reject path · rules landed, no consumer
 
 `Decomp.Reject` discharges the trapping half: a run that reaches a state with no
 code at its pc never reaches an accepting halt. Panic machinery generally does
 **not** trap — it reaches the `HALT` syscall with a nonzero `a0`, so it *is*
-`SyscallHalted`, and no argument in that file touches it.
+`SyscallHalted`.
 
-What it needs is `a0 ≠ 0` at those halts: a proof about *values* rather than
-about control, and the first place this library would need vocabulary for
-"every path from here carries a nonzero register". There is none.
+`Accepted s := SyscallHalted s ∧ a0 = 0` is the observation that tells the two
+apart — **as a convention**: `SyscallHalted` is the machine's event, but "`a0`
+is the exit code and zero is success" is the host ABI (`Program.lean`'s `HALT`
+macro, the interpreter's exit report), which the step relation does not know.
+That convention is recorded in README "Trust", as a protocol definition rather
+than a machine fact, and it is the one this library reasons about. Two rules
+refute it: `not_accepted_of_cpsSyscallHalt` (from a
+halt triple whose postcondition pins `a0`, composing with `halt_sp1Text` —
+`not_accepted_of_halt_sp1Text` is the SP1 one-liner) and
+`not_accepted_of_invariant` (`J` initially, `J` preserved by every step, `J →
+¬Accepted`), with the run induction done once. The generic stuck-state lemma
+`not_reaches_of_reaches_stuck` now covers both halves.
 
-*Acceptance:* a judgement that composes with `cpsSyscallHalt` and lets a caller
-conclude "this region cannot halt with `a0 = 0`" from block-local facts.
+Neither rule has a consumer. The guest whose panic path motivated them is
+downstream, and what it owes is a `cpsTotal` from each panic entry to its
+`HALT` with `x10 ↦ᵣ 1` — a proof about values through formatting code, which
+nothing here makes cheap.
+
+*Acceptance (met, by the convention recorded in README "Trust"):* a judgement
+composing with `cpsSyscallHalt` that concludes "this region cannot halt with
+`a0 = 0`" from block-local facts. *Remaining:* the adversary pass on
+`SyscallHalted`, which `Accepted` rests on, and a consumer, downstream.
 
 ### 5. The refinement layer (L3) · large
 
@@ -193,6 +209,14 @@ statements were landed with the pass outstanding, both additive and reversible:
   withdrawn. The specific question: is `RunsTo.exit` taking `side x` — where
   `TerminatesIn.exit` takes none — the right departure from TR-765, or does it
   hide an obligation?
+- **`Accepted`** (`Decomp/Reject.lean`). `SyscallHalted ∧ a0 = 0` installs a
+  semantic accept boundary the step relation cannot justify on its own: that
+  `a0` is the exit code and zero means success is the host ABI. The convention
+  question — is this the *verifier's* acceptance event? — was put to the user
+  and answered: it is the protocol's accept, not the machine's, and a prover
+  proves any `HALT` (README "Trust"). What the pass still owes is the machine
+  side, the `SyscallHalted` bullet below, on which `Accepted` rests. Raised by
+  the review of PR #10.
 - **`SyscallHalted`.** It is stronger than `cpsHalt` and closer to the machine,
   but it is a *definition of accept*, and the whole reject-path argument rests on
   it. Worth attacking directly: is there a state that satisfies it and is not a
