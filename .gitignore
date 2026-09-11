@@ -1,0 +1,27 @@
+.lake/
+build/
+lake-packages/
+
+.DS_Store
+Thumbs.db
+
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+
+# Claude local state, but project skills and commands are tracked.
+.claude/*
+!.claude/skills/
+!.claude/commands/
+.codex/
+.opencode/
+.gemini/
+.cursor/
+.aider*
+.continue/
+
+# Local reference material: notes and third-party papers, not ours to redistribute.
+local/

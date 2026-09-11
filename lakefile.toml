@@ -1,0 +1,42 @@
+name = "riscv-decomp"
+version = "0.1.0"
+defaultTargets = ["Decomp", "Tools"]
+
+# `riscv-zkvm` supplies the RV64 model, `Rv64.Logic`'s separation logic, and the
+# SP1 backend. It is a PERMANENT dependency on the `sp1-backend` branch, not a
+# waypoint: that branch is not going to be merged upstream, so there will be no
+# tag to move back to, and the tagged v0.3.1 cannot execute an SP1 binary at all.
+#
+# Reproducibility rests on `lake-manifest.json`, which pins the resolved sha
+# rather than the branch name: a fresh clone gets that exact commit, and only an
+# explicit `lake update riscv-zkvm` moves it. Treat such an update as a
+# dependency bump -- re-run `lake build` and both gates after one.
+#
+# A branch forfeits the release oleans (`preferReleaseBuild` only matches a
+# tagged release), so this builds from source. That is cheap here: the import
+# closure is Rv64 + Rv64.Logic, neither of which imports `RiscvZkvm.Sail`, so the
+# generated Sail tree never enters the build and a full `lake build` is seconds.
+[[require]]
+name = "riscv-zkvm"
+git = "https://github.com/Verified-zkEVM/riscv-zkvm"
+rev = "sp1-backend"
+
+# Decompilation into logic into logic (L2): the `∃k` total-correctness triple,
+# conditional termination, the fuel-free loop rules, the L2 certificate contract,
+# the instruction leaves and the byte-region layer -- all stated over an abstract
+# `Stepper`, so ZisK, SP1 and any future RISC-V backend instantiate them rather
+# than fork them.
+[[lean_lib]]
+name = "Decomp"
+globs = ["Decomp", "Decomp.+"]
+
+[[lean_lib]]
+name = "Tools"
+
+# The axiom gate (`scripts/check-axioms.sh`): reads the axioms the kernel
+# actually recorded for this library's own declarations, rather than trusting
+# prose. Complements the source scan in `scripts/check-forbidden-tactics.sh`.
+[[lean_exe]]
+name = "axiomsweep"
+root = "Tools.AxiomSweep"
+supportInterpreter = true
