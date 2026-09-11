@@ -25,11 +25,11 @@ Above L2 there is now a first L3: `Refine` (a separate library, no machine in
 it) gives nondeterminism-with-failure specs and `⇓R` refinement, and
 `Decomp.Refine` ties a certificate's extracted function to a spec and desugars
 the pair to a `cpsTotal` triple against the spec. `FindIndex` is refined
-against `searchSpec` in two theorems that do not know about each other. What is
-still missing there is a program of several regions -- `bind_refine` has no
-consumer (item 5).
+against `searchSpec` in two theorems that do not know about each other. `CountdownThenFind` is two regions glued by `Cert.seq`, refining a `bind` of
+two specs. Item 5 has the details and what is still missing (a genuinely
+nondeterministic spec).
 
-`lake build`: 96 jobs, zero warnings. `scripts/check-axioms.sh`: 733
+`lake build`: 97 jobs, zero warnings. `scripts/check-axioms.sh`: 750
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -133,28 +133,34 @@ nothing here makes cheap.
 block-local facts. *Remaining:* the adversary pass on `Accepted`, and a
 consumer, downstream.
 
-### 5. The refinement layer (L3) · landed for one function
+### 5. The refinement layer (L3) · landed, one and two regions
 
 `Refine.Nres` is the abstract half: a spec is a may-fail flag plus a result set
 (`fail` is the top of the order, so a precondition is a spec that fails outside
 its domain), `conc R` is `⇓R`, and `refine_trans` / `bind_refine` are the two
 composition lemmas. It imports nothing from `Rv64` or `Decomp`. `Decomp.Refine`
-is the bridge: `Cert.Refines c spec R` and the desugaring `Cert.refines_sound`
-to a `cpsTotal` triple whose postcondition names the spec and not `fn`.
+is the bridge: `Cert.Refines c spec R`, the desugaring `Cert.refines_sound` to a
+`cpsTotal` triple whose postcondition names the spec and not `fn`, and
+`Cert.Refines.seq` — `Cert.seq` refines `Nres.bind`, with `seq`'s side
+condition `c₁.pre x ∧ c₂.pre (c₁.fn x)` being exactly what `bind` asks of the
+continuation.
 
-The worked instance is `FindIndex`: `searchSpec_ok_iff` (abstract correctness,
+Two worked instances. `FindIndex`: `searchSpec_ok_iff` (abstract correctness,
 on the `Refine` side) and `result_refines` (refinement, about `result` alone)
-are independent theorems, composed in `find_meets_spec`.
+are independent theorems, composed in `find_meets_spec`. `CountdownThenFind`:
+two regions back to back, glued by `extendCode` / `frameR` / `seq` with one
+`ac_rfl`, refining `pipelineSpec = bind countSpec searchSpec` through
+`Cert.Refines.seq` from the two halves' own refinement theorems — the consumer
+`bind_refine` was missing.
 
-What is missing: a consumer for `bind_refine`. One loop against one spec never
-sequences, so the lemma that makes the layer scale to a program of several
-regions is a statement without a consumer, and `Cert.seq` and `Nres.bind` have
-not been shown to line up. That is the next slice here, and it wants a
-two-region example.
+What is missing: a spec with genuine nondeterminism. Both specs here are
+determinate on their domain, so `⇓R` is only ever exercised against a single
+acceptable result, and the failure flag only as a precondition. A spec that
+admits several answers, refined by an implementation that picks one, is the
+next instance to write.
 
 *Acceptance (met):* for one function, an abstract-correctness proof and a
 refinement proof that are two separate, independently checkable theorems.
-*Remaining:* `bind_refine` against `Cert.seq`.
 
 ### 6. The extractor · large · research risk · M0 landed
 

@@ -16,7 +16,7 @@ it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
 live.
 
 ```
-lake build            # 96 jobs, zero warnings
+lake build            # 97 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -36,15 +36,15 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
 | `Decomp.Extract.CFG` | The extractor's first step, computable and untrusted: basic blocks, loops, exits, and which loop rule each loop wants — including whether its exits converge through the compiler's pure-jump blocks. Pinned by `#guard` to the two hand-proved programs. |
-| `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, and `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec. |
-| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; and the SP1-vs-ZisK ecall regression. |
+| `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec, and `Cert.Refines.seq` shows `Cert.seq` refines `Nres.bind`. |
+| `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; the two glued back to back (`CountdownThenFind`) and refined against a `bind` of two specs; and the SP1-vs-ZisK ecall regression. |
 
 The L3 layer's abstract half is a separate library, `Refine`, which imports nothing from `Rv64` or `Decomp`:
 
 | Module | What it is |
 | --- | --- |
 | `Refine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
-| `Refine.Examples.Search` | A linear-search specification and its abstract-correctness theorem, with no machine in sight. |
+| `Refine.Examples.Search` | A linear-search specification, a countdown specification, their `bind`, and the abstract-correctness theorems, with no machine in sight. |
 
 ## Why no fuel
 
