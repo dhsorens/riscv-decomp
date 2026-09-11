@@ -107,8 +107,13 @@ code at its pc never reaches an accepting halt. Panic machinery generally does
 **not** trap — it reaches the `HALT` syscall with a nonzero `a0`, so it *is*
 `SyscallHalted`.
 
-`Accepted s := SyscallHalted s ∧ a0 = 0` is now the observation that tells the
-two apart, and two rules refute it: `not_accepted_of_cpsSyscallHalt` (from a
+`Accepted s := SyscallHalted s ∧ a0 = 0` is the observation that tells the two
+apart — **as a convention**: `SyscallHalted` is the machine's event, but "`a0`
+is the exit code and zero is success" is the host ABI (`Program.lean`'s `HALT`
+macro, the interpreter's exit report), which the step relation does not know.
+Whether it is the verifier's acceptance event is the owed adversarial pass
+below; until it runs, `Accepted` reads "the host-ABI accept". Two rules refute
+it: `not_accepted_of_cpsSyscallHalt` (from a
 halt triple whose postcondition pins `a0`, composing with `halt_sp1Text` —
 `not_accepted_of_halt_sp1Text` is the SP1 one-liner) and
 `not_accepted_of_invariant` (`J` initially, `J` preserved by every step, `J →
@@ -120,8 +125,9 @@ downstream, and what it owes is a `cpsTotal` from each panic entry to its
 `HALT` with `x10 ↦ᵣ 1` — a proof about values through formatting code, which
 nothing here makes cheap.
 
-*Acceptance (met):* a judgement composing with `cpsSyscallHalt` that concludes
-"this region cannot halt with `a0 = 0`" from block-local facts. *Remaining:* a
+*Acceptance (met, modulo the convention):* a judgement composing with
+`cpsSyscallHalt` that concludes "this region cannot halt with `a0 = 0`" from
+block-local facts. *Remaining:* the adversary pass on `Accepted`, and a
 consumer, downstream.
 
 ### 5. The refinement layer (L3) · large
@@ -203,6 +209,13 @@ statements were landed with the pass outstanding, both additive and reversible:
   withdrawn. The specific question: is `RunsTo.exit` taking `side x` — where
   `TerminatesIn.exit` takes none — the right departure from TR-765, or does it
   hide an obligation?
+- **`Accepted`** (`Decomp/Reject.lean`). `SyscallHalted ∧ a0 = 0` installs a
+  semantic accept boundary the step relation cannot justify on its own: that
+  `a0` is the exit code and zero means success is the host ABI. The question
+  for the pass: is this the *verifier's* acceptance event — can a run with
+  `a0 ≠ 0` at the halt still be accepted by the prover, or one with `a0 = 0`
+  rejected? Every `¬ Accepted` rule is additive and reads as a statement about
+  the convention until this is confirmed. Raised by the review of PR #10.
 - **`SyscallHalted`.** It is stronger than `cpsHalt` and closer to the machine,
   but it is a *definition of accept*, and the whole reject-path argument rests on
   it. Worth attacking directly: is there a state that satisfies it and is not a
