@@ -1,5 +1,5 @@
 /-
-  Refine.Examples.Search
+  DecompRefine.Examples.Search
 
   An abstract specification and its correctness, with no machine in sight.
 
@@ -15,13 +15,13 @@
 
 module
 
-public import Refine.Nres
+public import DecompRefine.Nres
 
 @[expose] public section
 
-namespace Refine.Examples.Search
+namespace DecompRefine.Examples.Search
 
-open Refine
+open DecompRefine
 
 /-- Linear search over the index range `[i, e)` for `stop`: `some stop` if it
     lies in the range, `none` if no index in the range is `stop`. The
@@ -153,4 +153,4 @@ theorem pipelineSpecLe_two_answers :
   · rw [searchSpec_ok_iff]; decide
   · rw [searchSpec_ok_iff]; decide
 
-end Refine.Examples.Search
+end DecompRefine.Examples.Search

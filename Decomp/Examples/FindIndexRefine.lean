@@ -4,9 +4,9 @@
   The L3 worked instance: `FindIndex` meets `searchSpec`, in two theorems that
   do not know about each other.
 
-  * `Refine.Examples.Search.searchSpec_ok_iff` -- **abstract correctness**. The
+  * `DecompRefine.Examples.Search.searchSpec_ok_iff` -- **abstract correctness**. The
     spec's one acceptable answer is `some stop` when `stop` lies in `[i, e)`
-    and `none` otherwise. Proved on the `Refine` side; mentions no machine.
+    and `none` otherwise. Proved on the `DecompRefine` side; mentions no machine.
   * `result_refines` -- **refinement**. The function extracted from the four
     instructions, `result stop e i`, is `R`-related to an acceptable answer of
     the spec. Proved here about `result` alone; mentions no register.
@@ -26,13 +26,13 @@ module
 
 public import Decomp.Refine
 public import Decomp.Examples.FindIndexMachine
-public import Refine.Examples.Search
+public import DecompRefine.Examples.Search
 
 @[expose] public section
 
 namespace Decomp.Examples.FindIndex
 
-open RiscvZkvm.Rv64 Refine Refine.Examples.Search
+open RiscvZkvm.Rv64 DecompRefine DecompRefine.Examples.Search
 
 /-- How a concrete exit reads as an abstract answer: a hit at `j` is
     `some j`, exhaustion is `none`. -/

@@ -353,15 +353,6 @@ def exitOf (base : Word) : Res → Word
   | .found _ => base + 16
   | .exhausted => base + 12
 
-/-- Which label an output reaches, as a `Bool`, for the two-exit judgement. -/
-def tag : Res → Bool
-  | .found _ => true
-  | .exhausted => false
-
-theorem exitOf_eq_ite (base : Word) (y : Res) :
-    exitOf base y = if tag y then base + 16 else base + 12 := by
-  cases y <;> rfl
-
 /-- The exit pass without the `JAL`: exit A in one step, exit B in three, each
     to its own label. -/
 theorem exit_div (hst : st.PlainAgree) (base : Word) {stop e : Nat}
@@ -404,51 +395,5 @@ theorem find_exhausted_div (b : Backend) (base : Word) {stop e i : Nat}
     (cont (Backend.plainAgree b) base hstop he)
     (exit_div (Backend.plainAgree b) base hstop he)
     (runsTo_exhausted he (e - 1 - i) i (by omega) hno)
-
-/-- The two-exit total judgement as `cpsTotalBranch_of_loopB` hands it to a
-    caller who has only `TerminatesB`: control reaches `base + 16` with `Q
-    (found j)` for *some* `j` -- i.e. `x10` holds some index, `x11 = stop`,
-    `x12 = e`, and **nothing here says `j = stop`** -- or `base + 12` with
-    `Q exhausted`. The arms are existentials over the outputs that reach each
-    label; that is all the rule can say without the derivation. `find_branch'`
-    below has the arms pinned, and needs the derivation to do it. -/
-theorem find_branch (b : Backend) (base : Word) {stop e i : Nat}
-    (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) (h : TerminatesB (find stop e) side i) :
-    cpsTotalBranch (Backend.stepper b) base (cr base) (I stop e i)
-      (base + 16) (fun hp => ∃ y, tag y = true ∧ Q stop e y hp)
-      (base + 12) (fun hp => ∃ y, tag y = false ∧ Q stop e y hp) :=
-  cpsTotalBranch_of_loopB (tag := tag)
-    (cont (Backend.plainAgree b) base hstop he)
-    (fun i y hb hs => by
-      rw [← exitOf_eq_ite]
-      exact exit_div (Backend.plainAgree b) base hstop he i y hb hs)
-    h
-
-/-- The two-exit judgement with the arms **pinned**: `x10 = stop` at
-    `base + 16`, `x10 = e` at `base + 12`. This is what a consumer of
-    `cpsTotalBranch` actually wants, and it is not reachable from
-    `find_branch`'s existential arms -- it needs the derivation, through
-    `runsTo_eq_result`, to know which output the run produced, and then
-    `cpsTotal_loopB_exits` gives a single-exit `cpsTotal` that one injection
-    turns into the branch. So the strong form comes from the loop rule
-    directly; the existential form is what remains when the derivation is not
-    to hand. -/
-theorem find_branch' (b : Backend) (base : Word) {stop e i : Nat}
-    (hstop : stop < 2 ^ 64) (he : e < 2 ^ 64) (h : TerminatesB (find stop e) side i) :
-    cpsTotalBranch (Backend.stepper b) base (cr base) (I stop e i)
-      (base + 16) (I stop e stop) (base + 12) (I stop e e) := by
-  obtain ⟨n, y, ht⟩ := h
-  have hrun := cpsTotal_loopB_exits (exitOf := exitOf base)
-    (cont (Backend.plainAgree b) base hstop he)
-    (exit_div (Backend.plainAgree b) base hstop he) ht
-  have hy := runsTo_eq_result n i y ht
-  subst hy
-  by_cases hin : i ≤ stop ∧ (stop < e ∨ e ≤ i)
-  · have hr : result stop e i = .found stop := by simp only [result]; rw [if_pos hin]
-    rw [hr] at hrun
-    exact cpsTotalBranch_of_cpsTotal_t hrun
-  · have hr : result stop e i = .exhausted := by simp only [result]; rw [if_neg hin]
-    rw [hr] at hrun
-    exact cpsTotalBranch_of_cpsTotal_f hrun
 
 end Decomp.Examples.FindIndex

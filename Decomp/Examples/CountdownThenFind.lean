@@ -25,7 +25,7 @@
     condition `c₁.pre x ∧ c₂.pre (c₁.fn x)` is seen to be exactly what `bind`
     asks of the continuation.
 
-  `pipelineSpec_ok_iff` (abstract correctness, on the `Refine` side) and
+  `pipelineSpec_ok_iff` (abstract correctness, on the `DecompRefine` side) and
   `cert_refines` (refinement) stay two theorems, and `pipeline_meets_spec`
   composes them with the machine.
 -/
@@ -35,13 +35,13 @@ module
 public import Decomp.Refine
 public import Decomp.Examples.CountdownMachine
 public import Decomp.Examples.FindIndexRefine
-public import Refine.Examples.Search
+public import DecompRefine.Examples.Search
 
 @[expose] public section
 
 namespace Decomp.Examples.Pipeline
 
-open RiscvZkvm.Rv64 Refine Refine.Examples.Search
+open RiscvZkvm.Rv64 DecompRefine DecompRefine.Examples.Search
 
 variable {st : Stepper}
 
