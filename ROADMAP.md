@@ -26,10 +26,10 @@ says what the code does to registers and memory, never that it meets a
 specification. The refinement layer that would close that gap does not exist
 (item 5).
 
-`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 454
-declarations on the three documented axioms. (It was 482 before the move to the
-module system; the 28 that left the census are compiler-generated `match_*`
-matchers, which are internal under `module` and carry no proof of their own.)
+`lake build`: 89 jobs, zero warnings. `scripts/check-axioms.sh`: 467
+declarations on the three documented axioms. (The move to the module system
+took 28 compiler-generated `match_*` matchers out of the census; they are
+internal under `module` and carry no proof of their own.)
 
 ---
 
@@ -57,18 +57,29 @@ those three things.
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
 
-### 2. The same-register keystone family is one instruction wide · small
+### 2. The same-register keystone family is one instruction wide · leaf half landed
 
 `LBU rd, off(rd)` needed its own leaf all the way down — `lbu_same_on`,
 `bytesRegionOn_lbu_same_at`, `bytesRegionSp1_lbu_same_at` — because the ordinary
 keystone's postcondition keeps `rs1 ↦ᵣ ptr`, forcing `rd ≠ rs1`, and framing
 cannot fake it: the footprint is genuinely two atoms rather than three.
 
-The same argument applies to `LB`, `LH`, `LHU`, `LW`, `LWU` and `LD`. None has a
-`_same_at` form. Each is a ten-line mirror.
+The *leaf* half is done: `LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` have
+`*_same_on` (`Leaf/Mem.lean`) and `*_same_sp1Mem` (`Leaf/Sp1Mem.lean`), each a
+mirror of its three-atom sibling with one `pull_second` fewer. They are
+statements with no consumer.
 
-*Acceptance:* the six missing forms, and a note in `Region/Bytes.lean` saying
-the family is complete.
+The *region* half — the six `_same_at` keystones this item is named for — is
+**not**: there is no `bytesRegionOn_lw_same_at` and so on, because there is no
+ordinary `bytesRegionOn_lw_at` for it to mirror. The byte-region keystones are
+`LBU`/`SB` only, and a wide load at a region index needs the `packBytes`
+algebra run the other way from `Region/Wide.lean`'s stores. That is the real
+work behind this item, and it is open. `Region/Bytes.lean` says which layer is
+complete and which is not.
+
+*Acceptance:* the six missing `_same_at` region forms, and a note in
+`Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
+leaf twins and the note; the region forms remain.
 
 ### 3. The `OffText` discharges are restated per guest · small
 
