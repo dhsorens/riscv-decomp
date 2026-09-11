@@ -16,7 +16,7 @@ it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
 live.
 
 ```
-lake build            # 95 jobs, zero warnings
+lake build            # 96 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -35,6 +35,7 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
+| `Decomp.Extract.CFG` | The extractor's first step, computable and untrusted: basic blocks, loops, exits, and which loop rule each loop wants — including whether its exits converge through the compiler's pure-jump blocks. Pinned by `#guard` to the two hand-proved programs. |
 | `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, and `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec. |
 | `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; and the SP1-vs-ZisK ecall regression. |
 

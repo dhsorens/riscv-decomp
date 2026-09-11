@@ -29,7 +29,7 @@ against `searchSpec` in two theorems that do not know about each other. What is
 still missing there is a program of several regions -- `bind_refine` has no
 consumer (item 5).
 
-`lake build`: 95 jobs, zero warnings. `scripts/check-axioms.sh`: 563
+`lake build`: 96 jobs, zero warnings. `scripts/check-axioms.sh`: 733
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -143,7 +143,7 @@ two-region example.
 refinement proof that are two separate, independently checkable theorems.
 *Remaining:* `bind_refine` against `Cert.seq`.
 
-### 6. The extractor · large · research risk
+### 6. The extractor · large · research risk · M0 landed
 
 The hand proofs are the point being tested, not the destination. A
 proof-producing RV64 decompiler in Lean metaprogramming — per region, emit a
@@ -153,13 +153,33 @@ the existing combinators — is what makes this scale. `riscv-zkvm`'s
 Myreen's own HOL4 decompiler is ~2,200 lines of ML, ~500 architecture-specific.
 
 The generator stays out of the trusted base because its certificates are
-re-checked against the stepper.
+re-checked against the stepper. Everything it computes is a `#guard`, never a
+theorem.
 
-*Acceptance:* the extractor reproduces a hand proof automatically, then handles
-a second function nobody wrote by hand.
+*Milestones:*
 
-*Known risk:* computed branches defeat CFG recovery. Plan hand-written
-`cpsNBranchWithin` certificates at indirect-jump sites.
+- **M0 — control-flow recovery · done.** `Decomp.Extract.CFG`: basic blocks,
+  back edges, loop membership (as an address interval, named so), exits, and
+  the *shape* each loop wants — header-guarded (`cpsTotal_loop`), body exits
+  that converge through pure-jump blocks (`cpsTotal_loopB`, region extended by
+  those blocks), or body exits that do not (`cpsTotal_loopB_exits`). On the two
+  hand-proved programs it reproduces the analysis their headers give in prose,
+  including the `JAL` `FindIndex`'s region has to include. `JALR` is flagged,
+  not followed.
+- **M1 — the abstract body.** From a loop's blocks, emit the `RecB` (or `Rec`)
+  over a register-file abstraction: symbolic evaluation of each block's plain
+  instructions into a function on `Reg → Word`, with the branch conditions as
+  the `inl`/`inr` split. Memory is out of scope for M1.
+- **M2 — the certificate.** Emit `hCont` / `hExit` as goals and discharge them
+  by leaf transfer and framing — the composition `FindIndexMachine.lean` does
+  by hand, mechanised. The `side` condition comes out as the collected
+  representability facts.
+- **M3 — acceptance.** The extractor reproduces `FindIndex`'s certificate
+  automatically, then handles a second function nobody wrote by hand.
+
+*Known risk:* computed branches defeat CFG recovery. M0 reports them
+(`LoopInfo.hasIndirect`); plan hand-written `cpsNBranchWithin` certificates at
+indirect-jump sites.
 
 ### 7. Two genuinely divergent exits · resolved
 
