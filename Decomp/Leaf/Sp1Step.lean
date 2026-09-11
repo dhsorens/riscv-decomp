@@ -22,7 +22,11 @@
   profile; they are what make the agreement proofs one line each.
 -/
 
-import Decomp.Leaf.Core
+module
+
+public import Decomp.Leaf.Core
+
+@[expose] public section
 
 namespace Decomp
 

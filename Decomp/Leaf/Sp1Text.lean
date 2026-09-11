@@ -44,7 +44,11 @@
   `Decomp/Leaf/Sp1Mem.lean`.
 -/
 
-import Decomp.Leaf.Sp1Step
+module
+
+public import Decomp.Leaf.Sp1Step
+
+@[expose] public section
 
 namespace Decomp
 

@@ -25,7 +25,11 @@
   `scripts/check-axioms.sh` is the wrapper.
 -/
 
-import Lean
+module
+
+public import Lean
+
+@[expose] public section
 
 open Lean
 

@@ -15,24 +15,27 @@
   instructions usable, then SP1's ABI, then the worked examples.
 -/
 
-import Decomp.Stepper
-import Decomp.Triple
-import Decomp.Tailrec
-import Decomp.Loop
-import Decomp.Certificate
-import Decomp.Leaf.Core
-import Decomp.Leaf.Mem
-import Decomp.Leaf.Sp1Step
-import Decomp.Leaf.Sp1Text
-import Decomp.Leaf.Sp1Mem
-import Decomp.Region.Bytes
-import Decomp.Region.Wide
-import Decomp.Region.Sp1
-import Decomp.Sp1.Syscalls
-import Decomp.Sp1.HintRead
-import Decomp.Reject
-import Decomp.Examples.Sp1Ecall
-import Decomp.Examples.Countdown
-import Decomp.Examples.CountdownMachine
-import Decomp.Examples.FindIndex
-import Decomp.Examples.FindIndexMachine
+module
+
+public import Decomp.Upstream
+public import Decomp.Stepper
+public import Decomp.Triple
+public import Decomp.Tailrec
+public import Decomp.Loop
+public import Decomp.Certificate
+public import Decomp.Leaf.Core
+public import Decomp.Leaf.Mem
+public import Decomp.Leaf.Sp1Step
+public import Decomp.Leaf.Sp1Text
+public import Decomp.Leaf.Sp1Mem
+public import Decomp.Region.Bytes
+public import Decomp.Region.Wide
+public import Decomp.Region.Sp1
+public import Decomp.Sp1.Syscalls
+public import Decomp.Sp1.HintRead
+public import Decomp.Reject
+public import Decomp.Examples.Sp1Ecall
+public import Decomp.Examples.Countdown
+public import Decomp.Examples.CountdownMachine
+public import Decomp.Examples.FindIndex
+public import Decomp.Examples.FindIndexMachine

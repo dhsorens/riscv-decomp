@@ -12,8 +12,12 @@
   code window.
 -/
 
-import Decomp.Region.Wide
-import Decomp.Leaf.Sp1Mem
+module
+
+public import Decomp.Region.Wide
+public import Decomp.Leaf.Sp1Mem
+
+@[expose] public section
 
 namespace Decomp
 

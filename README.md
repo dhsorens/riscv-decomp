@@ -16,7 +16,7 @@ it was the L2 layer under a ZIP-2005 guest, and where its worked instances still
 live.
 
 ```
-lake build            # 95 jobs, zero warnings
+lake build            # 89 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -25,6 +25,7 @@ scripts/check-forbidden-tactics.sh
 
 | Module | What it is |
 | --- | --- |
+| `Decomp.Upstream` | The single public-import hub for `riscv-zkvm`: re-exports the module-system contents of its two legacy aggregators. (The only other mentions of upstream are private `meta import`s where a `#guard` runs an upstream definition.) |
 | `Decomp.Stepper` | The two-field interface a backend owes: `next`, and "execution never rewrites code". Everything below is stated over it, so ZisK, SP1 and any future backend instantiate rather than fork. |
 | `Decomp.Triple` | The judgements: `cpsWithin` (bounded), `cpsTotal` (Myreen's `∃k`), `cpsBranch`, `cpsHalt`, `cpsSyscallHalt`. 30-odd structural rules — frame, sequence, weaken, extend-code — restated over a `Stepper`. |
 | `Decomp.Tailrec` | Conditional termination as an *inductive*, so the least fixpoint is termination and Lean's generated `.rec` is TR-765's derived induction principle. Two shapes: `Rec` (header-guarded) and `RecB` (`body : α → α ⊕ β`, for a body that may return). |
@@ -81,6 +82,22 @@ reason, `cpsSyscallHalt` is the judgement over it, and
 `cpsHalt_of_cpsSyscallHalt` shows nothing is lost. `cpsHalt` is kept for callers
 that only need "the machine stops here", with its doc comment now saying what it
 does not say.
+
+## Module system
+
+Every file is a Lean `module`, with `public import` and an `@[expose] public
+section` -- the same convention `riscv-zkvm` uses, so a downstream `rfl` on a
+definition here keeps working. Two consequences worth knowing:
+
+- A `module` cannot import a legacy file, and `riscv-zkvm`'s two aggregators
+  (`RiscvZkvm.Rv64`, `RiscvZkvm.Rv64.Logic`) are legacy. `Decomp.Upstream`
+  re-exports their *contents*, which are modules almost without exception, and
+  is the only place upstream is `public import`ed. The legacy files it cannot
+  include are listed in its header; nothing here needs them.
+- `#guard` evaluates, so a file whose checks *run* a definition needs a
+  private `meta import` of the module defining it -- transitively, down to
+  whatever the interpreter has to call (`Sp1/HintRead.lean` names three
+  upstream modules this way; they import code, not names).
 
 ## Genericity, and what is deliberately *not* abstracted
 

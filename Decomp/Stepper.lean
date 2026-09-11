@@ -37,8 +37,11 @@
   `simp_machine` to normalise back out.
 -/
 
-import RiscvZkvm.Rv64
-import RiscvZkvm.Rv64.Logic
+module
+
+public import Decomp.Upstream
+
+@[expose] public section
 
 namespace Decomp
 
