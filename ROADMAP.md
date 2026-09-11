@@ -57,41 +57,48 @@ those three things.
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
 
-### 2. The same-register load family is complete at the leaf layer · done
+### 2. The same-register keystone family is one instruction wide · leaf half landed
 
 `LBU rd, off(rd)` needed its own leaf all the way down — `lbu_same_on`,
 `bytesRegionOn_lbu_same_at`, `bytesRegionSp1_lbu_same_at` — because the ordinary
 keystone's postcondition keeps `rs1 ↦ᵣ ptr`, forcing `rd ≠ rs1`, and framing
 cannot fake it: the footprint is genuinely two atoms rather than three.
 
-`LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` now have the same twin at both leaf
-layers (`*_same_on` in `Leaf/Mem.lean`, `*_same_sp1Mem` in `Leaf/Sp1Mem.lean`),
-each a mirror of its three-atom sibling with one `pull_second` fewer. They are
-statements: nothing consumes them yet, and only `LBU`'s has ever been needed.
+The *leaf* half is done: `LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` have
+`*_same_on` (`Leaf/Mem.lean`) and `*_same_sp1Mem` (`Leaf/Sp1Mem.lean`), each a
+mirror of its three-atom sibling with one `pull_second` fewer. They are
+statements with no consumer.
 
-At the *region* layer nothing changed, and the note in `Region/Bytes.lean` says
-why: the byte-indexed keystones are `LBU`/`SB` only, so there is no ordinary
-`bytesRegionOn_lw_at` for a `_same_at` to mirror. A wide load at a region index
-is a separate item, wanted only when a consumer asks.
+The *region* half — the six `_same_at` keystones this item is named for — is
+**not**: there is no `bytesRegionOn_lw_same_at` and so on, because there is no
+ordinary `bytesRegionOn_lw_at` for it to mirror. The byte-region keystones are
+`LBU`/`SB` only, and a wide load at a region index needs the `packBytes`
+algebra run the other way from `Region/Wide.lean`'s stores. That is the real
+work behind this item, and it is open. `Region/Bytes.lean` says which layer is
+complete and which is not.
 
-*Acceptance (met):* the six missing forms and the note.
+*Acceptance:* the six missing `_same_at` region forms, and a note in
+`Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
+leaf twins and the note; the region forms remain.
 
-### 3. The `OffText` discharges live here now · done
+### 3. The `OffText` discharges are restated per guest · lemmas landed, downstream open
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
-below it the first. `offText_of_below` and `offText_of_above` (`Leaf/Sp1Text.lean`)
-state that for any window; `offText_region_below` / `_above` are the forms a
-loop body's store guard needs at byte `i` of a region, taking the bound the
-region keystones already carry. `offText_of_above` asks for a word-aligned
-`hi`, which every real `.text` end has; `offText_of_above'` is the raw form.
+below it the first. `offText_of_below` and `offText_of_above`
+(`Leaf/Sp1Text.lean`) now state that for any window; `offText_region_below` /
+`_above` are the forms a loop body's store guard needs at byte `i` of a region,
+on the bound the region keystones already carry. `offText_of_above` asks for a
+word-aligned `hi`, which every real `.text` end has; `offText_of_above'` is the
+raw form.
 
-The downstream instances are not yet rewritten as corollaries — that is a
-downstream change, and the `example`s next to the lemmas stand in for it at
-realistic numbers.
+The downstream instances have **not** been rewritten as one-line corollaries.
+That is a change in `zip-2005-asm`, and until it lands this item's acceptance
+is unmet: the `example`s next to the lemmas are illustrations at made-up
+addresses, not the consumer.
 
-*Acceptance (met here):* the four lemmas. *Remaining downstream:* replace the
-per-guest restatements with one-line instances.
+*Acceptance:* `offText_of_below` and `offText_of_above` here, with the
+downstream instances as one-line corollaries. *Landed so far:* the lemmas here.
 
 ### 4. The halting half of the reject path · rules landed, no consumer
 
