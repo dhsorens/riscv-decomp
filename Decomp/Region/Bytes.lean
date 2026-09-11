@@ -220,6 +220,24 @@ theorem bytesRegionOn_lbu_same_at (rd : Reg) (regionBase ptr : Word)
     (fun _ hp => by xperm_hyp hp)
     (cpsWithin_frameR (front ** rest) (pcFree_sepConj hf hr) lbu)
 
+/-! ## The same-register family, and how far it reaches
+
+At the **leaf** layer the family is complete: every load form has an
+`rd = rs1` twin -- `ld_same_on`, `lw_same_on`, `lwu_same_on`, `lh_same_on`,
+`lhu_same_on`, `lb_same_on`, `lbu_same_on` in `Decomp/Leaf/Mem.lean`, each
+instantiated at SP1 as `*_same_sp1Mem`. Each is the three-atom proof with one
+`pull_second` fewer, and each is a statement with no consumer yet except
+`LBU`'s.
+
+At the **region** layer it is one instruction wide, and so is the *ordinary*
+keystone family: `bytesRegionOn_lbu_at` / `_sb_at` are the only byte-indexed
+load/store forms, because a byte region hands out one byte per index and the
+`extractByte_packBytes` algebra says exactly that. A wide *load* at a region
+index (`LW` at byte `4k`, say) needs the `packBytes` algebra run in the other
+direction from `Region/Wide.lean`'s stores, and no consumer has asked for it.
+When one does, it wants both the `_at` and the `_same_at` form together, and
+the `_same_at` form is the ten-line mirror this section's `LBU` pair shows. -/
+
 /-- **`SB` writes byte `i` of the region**: `bs` becomes `bs.set i (v_data.truncate 8)`. -/
 theorem bytesRegionOn_sb_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
     (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat)

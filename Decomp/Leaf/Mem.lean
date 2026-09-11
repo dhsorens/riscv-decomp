@@ -81,6 +81,34 @@ theorem ld_on (rd rs1 : Reg) (v_addr vOld memVal : Word) (off : BitVec 12) (base
     have h4 := holdsFor_sepConj_pull_second.mpr h3
     exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree3 hR) h4
 
+/-- `LD rd, off(rd)`: the address register is the destination. Two atoms in
+    the footprint, not three -- see `lbu_same_on` for why framing cannot fake
+    this from `ld_on`. -/
+theorem ld_same_on (rd : Reg) (v_addr memVal : Word) (off : BitVec 12) (base : Word)
+    (hrd : rd ≠ .x0)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LD rd rd off) → s.getReg rd = v_addr →
+      valid (v_addr + signExtend12 off) = true → st.next s = some (execInstrBr s (.LD rd rd off))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LD rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsOn valid (v_addr + signExtend12 off) memVal)
+      ((rd ↦ᵣ memVal) ** memIsOn valid (v_addr + signExtend12 off) memVal) := by
+  intro R hR s hinv hcr hPR hpc; subst hpc
+  have hfetch : s.code s.pc = some (.LD rd rd off) := CodeReq.singleton_satisfiedBy.mp hcr
+  have hrs1 : s.getReg rd = v_addr :=
+    holdsFor_regIs.mp (holdsFor_sepConj_elim_left (holdsFor_sepConj_elim_left hPR))
+  have hcell := holdsFor_memIsOn.mp (holdsFor_sepConj_elim_right
+    (holdsFor_sepConj_elim_left hPR))
+  have hmem : s.getMem (v_addr + signExtend12 off) = memVal := hcell.1
+  have hstep' := hst s hinv hfetch hrs1 hcell.2
+  have hexec' : execInstrBr s (.LD rd rd off) = (s.setReg rd memVal).setPC (s.pc + 4) := by
+    simp only [execInstrBr, hrs1, hmem]
+  refine ⟨1, Nat.le_refl 1, (s.setReg rd memVal).setPC (s.pc + 4), ?_, rfl, ?_⟩
+  · show (st.next s).bind (st.iter 0) = some _
+    rw [hstep', hexec']; rfl
+  · have h1 := holdsFor_sepConj_assoc.mp hPR
+    have h2 := holdsFor_sepConj_regIs_setReg (v' := memVal) hrd h1
+    have h3 := holdsFor_sepConj_assoc.mpr h2
+    exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree2 hR) h3
+
 /-- `SD rs1, rs2, off`: store a doubleword to the cell. -/
 theorem sd_on (rs1 rs2 : Reg) (v_addr v_data memOld : Word) (off : BitVec 12) (base : Word)
     (hst : ∀ s, st.inv s → s.code s.pc = some (.SD rs1 rs2 off) → s.getReg rs1 = v_addr →
@@ -168,6 +196,36 @@ theorem lw_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word
     have h4 := holdsFor_sepConj_pull_second.mpr h3
     exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree3 hR) h4
 
+/-- `LW rd, off(rd)`: the address register is the destination. Two atoms in
+    the footprint, not three -- see `lbu_same_on` for why framing cannot fake
+    this from `lw_on`. -/
+theorem lw_same_on (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word)
+    (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LW rd rd off) → s.getReg rd = v_addr →
+      valid dwordAddr = true → st.next s = some (execInstrBr s (.LW rd rd off))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LW rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsOn valid dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).signExtend 64)) ** memIsOn valid dwordAddr wordVal) := by
+  intro R hR s hinv hcr hPR hpc; subst hpc
+  have hfetch : s.code s.pc = some (.LW rd rd off) := CodeReq.singleton_satisfiedBy.mp hcr
+  have hrs1 : s.getReg rd = v_addr :=
+    holdsFor_regIs.mp (holdsFor_sepConj_elim_left (holdsFor_sepConj_elim_left hPR))
+  have hcell := holdsFor_memIsOn.mp (holdsFor_sepConj_elim_right
+    (holdsFor_sepConj_elim_left hPR))
+  have hmem : s.getMem dwordAddr = wordVal := hcell.1
+  have hstep' := hst s hinv hfetch hrs1 hcell.2
+  have hexec' : execInstrBr s (.LW rd rd off) = (s.setReg rd ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).signExtend 64)).setPC (s.pc + 4) := by
+    simp only [execInstrBr, hrs1, getWord32_eq]; rw [halign, hmem]
+  refine ⟨1, Nat.le_refl 1, (s.setReg rd ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).signExtend 64)).setPC (s.pc + 4), ?_, rfl, ?_⟩
+  · show (st.next s).bind (st.iter 0) = some _
+    rw [hstep', hexec']; rfl
+  · have h1 := holdsFor_sepConj_assoc.mp hPR
+    have h2 := holdsFor_sepConj_regIs_setReg (v' := ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).signExtend 64)) hrd h1
+    have h3 := holdsFor_sepConj_assoc.mpr h2
+    exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree2 hR) h3
+
 /-- `LWU`: zero-extended 32-bit load from the containing doubleword. -/
 theorem lwu_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word)
     (dwordAddr wordVal : Word)
@@ -197,6 +255,36 @@ theorem lwu_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Wor
     have h3 := holdsFor_sepConj_assoc.mpr h2
     have h4 := holdsFor_sepConj_pull_second.mpr h3
     exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree3 hR) h4
+
+/-- `LWU rd, off(rd)`: the address register is the destination. Two atoms in
+    the footprint, not three -- see `lbu_same_on` for why framing cannot fake
+    this from `lwu_on`. -/
+theorem lwu_same_on (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word)
+    (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LWU rd rd off) → s.getReg rd = v_addr →
+      valid dwordAddr = true → st.next s = some (execInstrBr s (.LWU rd rd off))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LWU rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsOn valid dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).zeroExtend 64)) ** memIsOn valid dwordAddr wordVal) := by
+  intro R hR s hinv hcr hPR hpc; subst hpc
+  have hfetch : s.code s.pc = some (.LWU rd rd off) := CodeReq.singleton_satisfiedBy.mp hcr
+  have hrs1 : s.getReg rd = v_addr :=
+    holdsFor_regIs.mp (holdsFor_sepConj_elim_left (holdsFor_sepConj_elim_left hPR))
+  have hcell := holdsFor_memIsOn.mp (holdsFor_sepConj_elim_right
+    (holdsFor_sepConj_elim_left hPR))
+  have hmem : s.getMem dwordAddr = wordVal := hcell.1
+  have hstep' := hst s hinv hfetch hrs1 hcell.2
+  have hexec' : execInstrBr s (.LWU rd rd off) = (s.setReg rd ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).zeroExtend 64)).setPC (s.pc + 4) := by
+    simp only [execInstrBr, hrs1, getWord32_eq]; rw [halign, hmem]
+  refine ⟨1, Nat.le_refl 1, (s.setReg rd ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).zeroExtend 64)).setPC (s.pc + 4), ?_, rfl, ?_⟩
+  · show (st.next s).bind (st.iter 0) = some _
+    rw [hstep', hexec']; rfl
+  · have h1 := holdsFor_sepConj_assoc.mp hPR
+    have h2 := holdsFor_sepConj_regIs_setReg (v' := ((extractWord32 wordVal ((byteOffset (v_addr + signExtend12 off)) / 4)).zeroExtend 64)) hrd h1
+    have h3 := holdsFor_sepConj_assoc.mpr h2
+    exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree2 hR) h3
 
 /-- `SW`: 32-bit store into the containing doubleword. -/
 theorem sw_on (rs1 rs2 : Reg) (v_addr v_data : Word) (off : BitVec 12) (base : Word)
@@ -263,6 +351,36 @@ theorem lh_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word
     have h4 := holdsFor_sepConj_pull_second.mpr h3
     exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree3 hR) h4
 
+/-- `LH rd, off(rd)`: the address register is the destination. Two atoms in
+    the footprint, not three -- see `lbu_same_on` for why framing cannot fake
+    this from `lh_on`. -/
+theorem lh_same_on (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word)
+    (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LH rd rd off) → s.getReg rd = v_addr →
+      valid dwordAddr = true → st.next s = some (execInstrBr s (.LH rd rd off))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LH rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsOn valid dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).signExtend 64)) ** memIsOn valid dwordAddr wordVal) := by
+  intro R hR s hinv hcr hPR hpc; subst hpc
+  have hfetch : s.code s.pc = some (.LH rd rd off) := CodeReq.singleton_satisfiedBy.mp hcr
+  have hrs1 : s.getReg rd = v_addr :=
+    holdsFor_regIs.mp (holdsFor_sepConj_elim_left (holdsFor_sepConj_elim_left hPR))
+  have hcell := holdsFor_memIsOn.mp (holdsFor_sepConj_elim_right
+    (holdsFor_sepConj_elim_left hPR))
+  have hmem : s.getMem dwordAddr = wordVal := hcell.1
+  have hstep' := hst s hinv hfetch hrs1 hcell.2
+  have hexec' : execInstrBr s (.LH rd rd off) = (s.setReg rd ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).signExtend 64)).setPC (s.pc + 4) := by
+    simp only [execInstrBr, hrs1, getHalfword_eq]; rw [halign, hmem]
+  refine ⟨1, Nat.le_refl 1, (s.setReg rd ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).signExtend 64)).setPC (s.pc + 4), ?_, rfl, ?_⟩
+  · show (st.next s).bind (st.iter 0) = some _
+    rw [hstep', hexec']; rfl
+  · have h1 := holdsFor_sepConj_assoc.mp hPR
+    have h2 := holdsFor_sepConj_regIs_setReg (v' := ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).signExtend 64)) hrd h1
+    have h3 := holdsFor_sepConj_assoc.mpr h2
+    exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree2 hR) h3
+
 /-- `LHU`: zero-extended 16-bit load. -/
 theorem lhu_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word)
     (dwordAddr wordVal : Word)
@@ -292,6 +410,36 @@ theorem lhu_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Wor
     have h3 := holdsFor_sepConj_assoc.mpr h2
     have h4 := holdsFor_sepConj_pull_second.mpr h3
     exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree3 hR) h4
+
+/-- `LHU rd, off(rd)`: the address register is the destination. Two atoms in
+    the footprint, not three -- see `lbu_same_on` for why framing cannot fake
+    this from `lhu_on`. -/
+theorem lhu_same_on (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word)
+    (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LHU rd rd off) → s.getReg rd = v_addr →
+      valid dwordAddr = true → st.next s = some (execInstrBr s (.LHU rd rd off))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LHU rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsOn valid dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).zeroExtend 64)) ** memIsOn valid dwordAddr wordVal) := by
+  intro R hR s hinv hcr hPR hpc; subst hpc
+  have hfetch : s.code s.pc = some (.LHU rd rd off) := CodeReq.singleton_satisfiedBy.mp hcr
+  have hrs1 : s.getReg rd = v_addr :=
+    holdsFor_regIs.mp (holdsFor_sepConj_elim_left (holdsFor_sepConj_elim_left hPR))
+  have hcell := holdsFor_memIsOn.mp (holdsFor_sepConj_elim_right
+    (holdsFor_sepConj_elim_left hPR))
+  have hmem : s.getMem dwordAddr = wordVal := hcell.1
+  have hstep' := hst s hinv hfetch hrs1 hcell.2
+  have hexec' : execInstrBr s (.LHU rd rd off) = (s.setReg rd ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).zeroExtend 64)).setPC (s.pc + 4) := by
+    simp only [execInstrBr, hrs1, getHalfword_eq]; rw [halign, hmem]
+  refine ⟨1, Nat.le_refl 1, (s.setReg rd ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).zeroExtend 64)).setPC (s.pc + 4), ?_, rfl, ?_⟩
+  · show (st.next s).bind (st.iter 0) = some _
+    rw [hstep', hexec']; rfl
+  · have h1 := holdsFor_sepConj_assoc.mp hPR
+    have h2 := holdsFor_sepConj_regIs_setReg (v' := ((extractHalfword wordVal ((byteOffset (v_addr + signExtend12 off)) / 2)).zeroExtend 64)) hrd h1
+    have h3 := holdsFor_sepConj_assoc.mpr h2
+    exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree2 hR) h3
 
 /-- `SH`: 16-bit store into the containing doubleword. -/
 theorem sh_on (rs1 rs2 : Reg) (v_addr v_data : Word) (off : BitVec 12) (base : Word)
@@ -357,6 +505,36 @@ theorem lb_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word
     have h3 := holdsFor_sepConj_assoc.mpr h2
     have h4 := holdsFor_sepConj_pull_second.mpr h3
     exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree3 hR) h4
+
+/-- `LB rd, off(rd)`: the address register is the destination. Two atoms in
+    the footprint, not three -- see `lbu_same_on` for why framing cannot fake
+    this from `lb_on`. -/
+theorem lb_same_on (rd : Reg) (v_addr : Word) (off : BitVec 12) (base : Word)
+    (dwordAddr wordVal : Word)
+    (hrd : rd ≠ .x0)
+    (halign : alignToDword (v_addr + signExtend12 off) = dwordAddr)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LB rd rd off) → s.getReg rd = v_addr →
+      valid dwordAddr = true → st.next s = some (execInstrBr s (.LB rd rd off))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LB rd rd off))
+      ((rd ↦ᵣ v_addr) ** memIsOn valid dwordAddr wordVal)
+      ((rd ↦ᵣ ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).signExtend 64)) ** memIsOn valid dwordAddr wordVal) := by
+  intro R hR s hinv hcr hPR hpc; subst hpc
+  have hfetch : s.code s.pc = some (.LB rd rd off) := CodeReq.singleton_satisfiedBy.mp hcr
+  have hrs1 : s.getReg rd = v_addr :=
+    holdsFor_regIs.mp (holdsFor_sepConj_elim_left (holdsFor_sepConj_elim_left hPR))
+  have hcell := holdsFor_memIsOn.mp (holdsFor_sepConj_elim_right
+    (holdsFor_sepConj_elim_left hPR))
+  have hmem : s.getMem dwordAddr = wordVal := hcell.1
+  have hstep' := hst s hinv hfetch hrs1 hcell.2
+  have hexec' : execInstrBr s (.LB rd rd off) = (s.setReg rd ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).signExtend 64)).setPC (s.pc + 4) := by
+    simp only [execInstrBr, hrs1, getByte_eq]; rw [halign, hmem]
+  refine ⟨1, Nat.le_refl 1, (s.setReg rd ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).signExtend 64)).setPC (s.pc + 4), ?_, rfl, ?_⟩
+  · show (st.next s).bind (st.iter 0) = some _
+    rw [hstep', hexec']; rfl
+  · have h1 := holdsFor_sepConj_assoc.mp hPR
+    have h2 := holdsFor_sepConj_regIs_setReg (v' := ((extractByte wordVal (byteOffset (v_addr + signExtend12 off))).signExtend 64)) hrd h1
+    have h3 := holdsFor_sepConj_assoc.mpr h2
+    exact holdsFor_pcFree_setPC (pcFree_sepConj pcFree2 hR) h3
 
 /-- `LBU`: zero-extended byte load. -/
 theorem lbu_on (rd rs1 : Reg) (v_addr vOld : Word) (off : BitVec 12) (base : Word)
