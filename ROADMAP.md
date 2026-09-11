@@ -29,7 +29,7 @@ against `searchSpec` in two theorems that do not know about each other. `Countdo
 two specs. Item 5 has the details and what is still missing (a genuinely
 nondeterministic spec).
 
-`lake build`: 97 jobs, zero warnings. `scripts/check-axioms.sh`: 758
+`lake build`: 97 jobs, zero warnings. `scripts/check-axioms.sh`: 759
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -205,7 +205,7 @@ theorem.
 (`LoopInfo.hasIndirect`); plan hand-written `cpsNBranchWithin` certificates at
 indirect-jump sites.
 
-### 7. Two genuinely divergent exits · resolved
+### 7. Two genuinely divergent exits · answered; design confirmation owed
 
 `cpsTotal` has a single exit address, and `cpsTotal_loopB` fixed it before the
 body ran, so every `inr` branch had to reach one label. That was an artifact of
@@ -215,18 +215,27 @@ so the label may be `exitOf y`. `cpsTotal_loopB_exits` is that rule, with the
 same four-line proof; `cpsTotal_loopB` is now its constant-label instance.
 
 The two-exit total judgement the question asked about, `cpsTotalBranch`, exists
-too (`Triple.lean`, with `of_cpsBranch`, the two injections, `weaken` and the
-join) and is *derived* from the loop rule for a caller holding only
-`TerminatesB` (`cpsTotalBranch_of_loopB`), its arm postconditions existentially
-quantified over the outputs that reach each label.
+too (`Triple.lean`) and is *derived* from the loop rule for a caller holding
+only `TerminatesB` (`cpsTotalBranch_of_loopB`), its arm postconditions
+existentially quantified over the outputs that reach each label — which is
+weak: `FindIndex.find_branch`'s found arm says `x10` holds *some* index, not
+`stop`. The pinned form `find_branch'` needs the derivation and comes from the
+loop rule directly through the two injections. Of the structural rules,
+`of_cpsBranch`, `weaken` and `merge_same_cr` are statements with no consumer.
 
-Consumer: `FindIndex` with the `JAL` cut off the region — `find_found_div` to
-`base + 16`, `find_exhausted_div` to `base + 12`, nothing joining them, and
-`find_branch` as the two-exit form. `Cert` still has one `exit_`; a certificate
-for divergent exits would carry `exit_ : β → Word`, and nothing has asked.
+Consumer: `FindIndex` with the region ending before the `JAL` — `find_found_div`
+to `base + 16`, `find_exhausted_div` to `base + 12`, nothing joining them. The
+`JAL` stays **resident** in `cr` (the four residency lemmas are stated over the
+four-instruction program) and is never executed; a three-instruction `cr` would
+be the stricter test of "nothing between them in the region" and has not been
+done. `Cert` still has one `exit_`; a certificate for divergent exits would
+carry `exit_ : β → Word`, and nothing has asked.
 
-*Acceptance (met):* the judgement, and the argument — the convergence
-requirement was never the machine's.
+*Acceptance:* either the judgement, or a written argument that the convergence
+requirement is the right one. *Landed:* both — the argument being that the
+requirement was never the machine's. A fifth judgement is a design decision,
+and the review of PR #11 asks the user to confirm (a) `cpsTotalBranch` with
+existential arms is the wanted shape and (b) the argument closes the item.
 
 ### 8. `COMMIT` is under-observed · upstream
 
