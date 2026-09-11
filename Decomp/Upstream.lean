@@ -6,8 +6,12 @@
   `riscv-zkvm`'s two aggregators, `RiscvZkvm.Rv64` and `RiscvZkvm.Rv64.Logic`,
   are legacy (non-`module`) files, and a `module` cannot import a legacy file.
   Their *contents* are modules almost without exception, so this file imports
-  those directly and stands in for the two aggregators. Every other file here
-  says `public import Decomp.Upstream` and nothing else about upstream.
+  those directly and stands in for the two aggregators. It is the single
+  *public-import* hub: every other file reaches upstream's names through
+  `public import Decomp.Upstream`. The one kind of exception is a private
+  `meta import` of a specific upstream module, needed where a `#guard` *runs*
+  an upstream definition (`Sp1/HintRead.lean` names three); those import code,
+  not names, and re-export nothing.
 
   Deliberately omitted, because they are legacy files and nothing here uses
   them: `RiscvZkvm.Rv64.Logic.CPSCall`, `RiscvZkvm.Rv64.Logic.MemSat`, `RiscvZkvm.Rv64.Logic.CodeReqExtents`, `RiscvZkvm.Rv64.Logic.WP.Examples`, `RiscvZkvm.Rv64.Logic.Tactics.WP`. If one is needed, the upstream ask is to put `module` at the top
