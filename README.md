@@ -23,9 +23,9 @@ scripts/check-forbidden-tactics.sh
 | --- | --- |
 | `Decomp.Upstream` | The single public-import hub for `riscv-zkvm`: re-exports the module-system contents of its two legacy aggregators. (The only other *imports* of upstream are private `meta import`s where a `#guard` runs an upstream definition; `open RiscvZkvm.Rv64` is a namespace, not an import.) |
 | `Decomp.Stepper` | The two-field interface a backend owes: `next`, and "execution never rewrites code". Everything below is stated over it, so ZisK, SP1 and any future backend instantiate rather than fork. |
-| `Decomp.Triple` | The judgements: `cpsWithin` (bounded), `cpsTotal` (Myreen's `∃k`), `cpsBranch`, `cpsTotalBranch` (two exits, no bound — derived from the loop rule, not primitive), `cpsHalt`, `cpsSyscallHalt`. 30-odd structural rules — frame, sequence, weaken, extend-code — restated over a `Stepper`. |
+| `Decomp.Triple` | The judgements: `cpsWithin` (bounded), `cpsTotal` (Myreen's `∃k`), `cpsBranch`, `cpsHalt`, `cpsSyscallHalt`. 30-odd structural rules — frame, sequence, weaken, extend-code — restated over a `Stepper`. |
 | `Decomp.Tailrec` | Conditional termination as an *inductive*, so the least fixpoint is termination and Lean's generated `.rec` is TR-765's derived induction principle. Two shapes: `Rec` (header-guarded) and `RecB` (`body : α → α ⊕ β`, for a body that may return). |
-| `Decomp.Loop` | The loop rules. `cpsTotal_loop` for a header-guarded loop; `cpsTotal_loopB` for a body that may return — which covers an early `break`, a mid-body exit, and a bottom-guarded loop with no rotation; `cpsTotal_loopB_exits` for exits that land on different labels, the exit address chosen by the output. `cpsTotal_loop_of_loopB` proves the second subsumes the first; `cpsTotalBranch_of_loopB` derives the two-exit total judgement. |
+| `Decomp.Loop` | The loop rules. `cpsTotal_loop` for a header-guarded loop; `cpsTotal_loopB` for a body that may return — which covers an early `break`, a mid-body exit, and a bottom-guarded loop with no rotation; `cpsTotal_loopB_exits` for exits that land on different labels, the exit address chosen by the output. `cpsTotal_loop_of_loopB` proves the second subsumes the first. |
 | `Decomp.Certificate` | TR-765's L2 output contract as a structure: `(fn, pre, sound)`, with the rider that the caller must discharge `pre` made structural rather than documentary. |
 | `Decomp.Leaf.*` | One-instruction specs. `Core` transfers upstream's ZisK leaves to any `PlainAgree` stepper (the eighteen non-memory constructors, no restatement). `Mem` re-proves the twelve load/store forms with the **cell as a parameter**, plus the seven `rd = rs1` load twins (`*_same_on`), whose two-atom footprint framing cannot fake. `Sp1Step`/`Sp1Text`/`Sp1Mem` are SP1's instances, including the code-window invariant a store guard needs. |
 | `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
@@ -35,12 +35,12 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec, and `Cert.Refines.seq` shows `Cert.seq` refines `Nres.bind`. |
 | `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; the two glued back to back (`CountdownThenFind`) and refined against a `bind` of two specs; and the SP1-vs-ZisK ecall regression. |
 
-The L3 layer's abstract half is a separate library, `Refine`, which imports nothing from `Rv64` or `Decomp`:
+The L3 layer's abstract half is a separate library, `DecompRefine`, which imports nothing from `Rv64` or `Decomp`:
 
 | Module | What it is |
 | --- | --- |
-| `Refine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
-| `Refine.Examples.Search` | A linear-search specification, a countdown specification, their `bind`, and the abstract-correctness theorems, with no machine in sight. |
+| `DecompRefine.Nres` | Nondeterminism with failure as a may-fail flag plus a result set; `fail` is the top of the refinement order, so a precondition is a spec that fails outside its domain. `⇓R` data refinement (`conc`), and the two composition lemmas `refine_trans` and `bind_refine`. |
+| `DecompRefine.Examples.Search` | A linear-search specification, a countdown specification, their `bind`, and the abstract-correctness theorems, with no machine in sight. |
 
 ## Why no fuel
 
@@ -101,8 +101,9 @@ definition here keeps working. Two consequences worth knowing:
   include are listed in its header; nothing here needs them.
 - `#guard` evaluates, so a file whose checks *run* a definition needs a
   private `meta import` of the module defining it -- transitively, down to
-  whatever the interpreter has to call (`Sp1/HintRead.lean` names three
-  upstream modules this way; they import code, not names).
+  whatever the interpreter has to call. The files whose `#guard`s run
+  upstream code are `Sp1/HintRead.lean` (three modules) and `Extract/CFG.lean`
+  (two); they import code, not names.
 
 ## Genericity, and what is deliberately *not* abstracted
 
@@ -124,7 +125,7 @@ structure literal.
 
 ## Trust
 
-Every declaration under `Decomp`, `Refine` and `DecompTools` rests on exactly three axioms:
+Every declaration under `Decomp`, `DecompRefine` and `DecompTools` rests on exactly three axioms:
 `propext`, `Classical.choice`, `Quot.sound`. `scripts/check-axioms.sh` reads what
 the kernel actually recorded, rather than trusting this paragraph;
 `scripts/check-forbidden-tactics.sh` is the fast source scan that keeps
@@ -143,6 +144,13 @@ Outside that, and not reduced by anything here:
   the `COMMIT` triple says "`pc += 4` and nothing else observable changed" —
   true, and weak. Harmless for a guest that commits nothing; a real obligation
   for one that does.
+- **`Accepted` is a convention.** `Decomp.Reject`'s `Accepted s := SyscallHalted
+  s ∧ a0 = 0` is the host-ABI, application-level accept: `HALT` with exit code
+  `0`. It is sound as a *protocol* definition, not as a machine fact. The stepper
+  does not know it; a prover will still prove any `HALT`, whatever `a0` holds;
+  and `COMMIT` remains a separate, unobservable conjunct (previous bullet). If a
+  later backend or consumer treats a nonzero halt as success, the `¬ Accepted`
+  rules stay true of the definition and false of that verifier.
 
 `ROADMAP.md` has the rest, including what is missing rather than merely trusted.
 

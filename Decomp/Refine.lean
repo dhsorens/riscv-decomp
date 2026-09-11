@@ -4,7 +4,7 @@
   Where L2 meets L3: an extracted function refines an abstract specification.
 
   `Cert` (L2) says what a region of machine code does, as a function `fn` plus
-  a triple coupling it to the machine. `Refine.Nres` (L3) says what a program
+  a triple coupling it to the machine. `DecompRefine.Nres` (L3) says what a program
   *should* do, as a set of acceptable results. This file joins them with one
   predicate and one theorem:
 
@@ -16,7 +16,7 @@
     so a caller reads "the machine ends in a state that some acceptable answer
     describes" without ever seeing `fn`.
 
-  The point is separation. The abstract-correctness proof lives on the `Refine`
+  The point is separation. The abstract-correctness proof lives on the `DecompRefine`
   side and mentions no machine; the refinement proof mentions `fn` and no
   registers; the certificate mentions registers and no spec. Each is checked
   on its own, and this file is the only place all three are in scope.
@@ -25,13 +25,13 @@
 module
 
 public import Decomp.Certificate
-public import Refine.Nres
+public import DecompRefine.Nres
 
 @[expose] public section
 
 namespace Decomp
 
-open RiscvZkvm.Rv64 Refine
+open RiscvZkvm.Rv64 DecompRefine
 
 universe u v w
 

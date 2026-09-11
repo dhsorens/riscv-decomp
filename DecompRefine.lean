@@ -1,5 +1,5 @@
 /-
-  Refine
+  DecompRefine
 
   The L3 refinement layer's abstract half: nondeterminism with failure, data
   refinement, and a worked specification. Imports nothing from `Rv64` or
@@ -11,5 +11,5 @@
 
 module
 
-public import Refine.Nres
-public import Refine.Examples.Search
+public import DecompRefine.Nres
+public import DecompRefine.Examples.Search

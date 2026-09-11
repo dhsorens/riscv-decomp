@@ -1,5 +1,5 @@
 /-
-  Refine.Nres
+  DecompRefine.Nres
 
   Nondeterminism with failure, and data refinement over it. The abstract half
   of the L3 layer: nothing here knows there is a machine.
@@ -11,7 +11,9 @@
   nothing of an implementation there. Lammich's `nres` (Isabelle's Refinement
   Framework) is the reference design; this is its normal form -- `FAIL` or a
   result set -- as one structure with two fields, so that `bind`, `⇓R` and the
-  order are all structural and no case split ever needs classical choice.
+  order are *defined* structurally, with no case split in any definition. The
+  proofs *about* the order (`le_refl`, `le_assert_of_pre`, `bind_refine`) do
+  split on a `Prop` and are classical, which the axiom census allows.
 
   The three things a consumer uses:
 
@@ -30,7 +32,7 @@ module
 
 @[expose] public section
 
-namespace Refine
+namespace DecompRefine
 
 universe u v w
 
@@ -253,4 +255,4 @@ theorem bind_assoc (m : Nres α) (f : α → Nres β) (g : β → Nres γ) :
 
 end Nres
 
-end Refine
+end DecompRefine
