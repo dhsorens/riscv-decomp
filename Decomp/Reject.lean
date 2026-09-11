@@ -42,8 +42,9 @@
   Panic machinery generally does not trap -- it reaches the `HALT` syscall with
   a **nonzero** `a0`, so it *is* `SyscallHalted`, and the two facts above say
   nothing about it. `Accepted` (halted by the syscall, *and* `a0 = 0`) is the
-  observation that separates the two, and the second half of this file refutes
-  it two ways: from a `cpsSyscallHalt` whose postcondition pins `a0`
+  observation that separates the two -- by the **host-ABI convention** that
+  `a0` is the exit code, which the machine model does not know; see its
+  docstring -- and the second half of this file refutes it two ways: from a `cpsSyscallHalt` whose postcondition pins `a0`
   (`not_accepted_of_cpsSyscallHalt`, composing with the halt leaf), and from an
   invariant that survives every step (`not_accepted_of_invariant`). Both have
   their run-induction done once here. Neither has a consumer yet: the guest that
@@ -139,8 +140,18 @@ are the two ways to refute it -- from a triple whose halt postcondition pins
 `a0`, or from an invariant that survives every step -- with the induction over
 the run done once here rather than per guest. -/
 
-/-- **Accepted**: halted by the halt syscall, with exit code `0`. `SyscallHalted`
-    pins the reason the machine stopped; this pins what it said. -/
+/-- **Accepted, as a convention**: halted by the halt syscall, with `a0 = 0`.
+
+    `SyscallHalted` is the machine's own event -- `stepSp1` stops on `t0 = 0`.
+    That `a0` is the *exit code*, and that zero means the host accepts, is the
+    **host ABI**, not the step relation: `Program.lean`'s `HALT` macro puts the
+    exit code in `a0`, and the interpreter reports `a0` as the guest's exit
+    value, but the machine model assigns `a0` no meaning at a halt. So every
+    `¬ Accepted` below is a theorem about this convention. Whether it is the
+    *verifier's* acceptance event -- whether a run with `a0 ≠ 0` here can still
+    be accepted by the prover, or one with `a0 = 0` rejected -- is the owed
+    adversarial pass in `ROADMAP.md`; until it runs, read `Accepted` as "the
+    host-ABI accept", not as "the prover accepted". -/
 def Accepted (s : MachineState) : Prop :=
   SyscallHalted s ∧ s.getReg .x10 = 0
 

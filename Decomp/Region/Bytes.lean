@@ -229,14 +229,16 @@ instantiated at SP1 as `*_same_sp1Mem`. Each is the three-atom proof with one
 `pull_second` fewer, and each is a statement with no consumer yet except
 `LBU`'s.
 
-At the **region** layer it is one instruction wide, and so is the *ordinary*
-keystone family: `bytesRegionOn_lbu_at` / `_sb_at` are the only byte-indexed
-load/store forms, because a byte region hands out one byte per index and the
-`extractByte_packBytes` algebra says exactly that. A wide *load* at a region
-index (`LW` at byte `4k`, say) needs the `packBytes` algebra run in the other
-direction from `Region/Wide.lean`'s stores, and no consumer has asked for it.
-When one does, it wants both the `_at` and the `_same_at` form together, and
-the `_same_at` form is the ten-line mirror this section's `LBU` pair shows. -/
+At the **region** layer it is still one instruction wide, and so is the
+*ordinary* keystone family: `bytesRegionOn_lbu_at` / `_sb_at` are the only
+byte-indexed load/store forms, because a byte region hands out one byte per
+index and the `extractByte_packBytes` algebra says exactly that. The six
+region `_same_at` forms `ROADMAP.md` item 2 asks for do not exist, and cannot
+be written as mirrors until their ordinary `_at` siblings do: a wide *load* at
+a region index (`LW` at byte `4k`, say) needs the `packBytes` algebra run in
+the other direction from `Region/Wide.lean`'s stores. That is the open half of
+the item. When it lands, each `_same_at` form is the ten-line mirror this
+section's `LBU` pair shows. -/
 
 /-- **`SB` writes byte `i` of the region**: `bs` becomes `bs.set i (v_data.truncate 8)`. -/
 theorem bytesRegionOn_sb_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
