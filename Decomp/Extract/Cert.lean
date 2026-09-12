@@ -421,26 +421,8 @@ theorem emitBody_sound {st : Stepper} (hst : st.PlainAgree) {rs : List Reg} (hnd
 /-! ## The two examples, as corollaries
 
 Both program facts are decided; the rest is `emitBody_sound`. Stated on the
-`Backend`-indexed steppers so the instance is what a caller would use. -/
-
-/-- The base the examples are stated at. -/
-def b0 : Word := 0x1000
-
-/-- The one loop of a single-loop program, or a dummy. -/
-def theLoop (prog : Program) : LoopInfo :=
-  (loops b0 prog).headD ⟨0, ⟨0, 0⟩, [], [], .bodyExitsDiverge [], true⟩
-
-/-- What `bodyOf` returns when the emitter refuses. -/
-def dummyBody : RecB RegFile Exit := ⟨fun r => .inr ⟨0, r⟩⟩
-
-/-- The emitted body of a single-loop program. -/
-def bodyOf (prog : Program) : RecB RegFile Exit :=
-  (emitBody (blocks b0 prog) (theLoop prog)).getD dummyBody
-
-theorem bodyOf_eq {prog : Program} (h : wellFormed (theLoop prog).header
-    (intervalLoop (blocks b0 prog) (theLoop prog).backEdge) = true) :
-    emitBody (blocks b0 prog) (theLoop prog) = some (bodyOf prog) := by
-  simp [bodyOf, emitBody, h]
+`Backend`-indexed steppers so the instance is what a caller would use, and
+about `Body.lean`'s `bodyOf`, the definition its `#guard`s pin. -/
 
 /-- `Countdown`, extracted: from the header, a run of the emitted body that
     returns `y` reaches `y.label` with the registers `y.regs`. (Which label

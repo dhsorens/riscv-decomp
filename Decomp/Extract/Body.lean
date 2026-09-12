@@ -24,9 +24,11 @@
   supported set, a backward jump that is not the back edge -- it returns `inr`
   at the current pc. That fallback is *sound* (control is indeed at that pc
   with the registers unchanged, in zero steps) but useless: the "exit" it
-  names is inside the loop. `wellFormed` is the static check that no path
-  reaches it, and `emitBody` refuses a loop that fails it, so that what it
-  does emit has real exits.
+  names is inside the loop. `wellFormed` is the static check meant to keep
+  every path off it, and `emitBody` refuses a loop that fails it; that the
+  check suffices -- `wellFormed = true → no run reaches the fallback` -- is
+  *not* proved. A false positive there costs a certificate that is sound and
+  useless, never one that is false.
 
   ## What is in scope
 
@@ -344,7 +346,25 @@ The two example programs, under the couplings `CountdownMachine.lean` and
 Each `#guard` runs the emitted body on one input and compares with the hand
 body run on the abstract state. -/
 
-private def b0 : Word := 0x1000
+/-- The base the examples are stated at, here and in `Cert.lean`. -/
+def b0 : Word := 0x1000
+
+/-- The one loop of a single-loop program, or a dummy. -/
+def theLoop (prog : Program) : LoopInfo :=
+  (loops b0 prog).headD ⟨0, ⟨0, 0⟩, [], [], .bodyExitsDiverge [], true⟩
+
+/-- What `bodyOf` returns when the emitter refuses. -/
+def dummyBody : RecB RegFile Exit := ⟨fun r => .inr ⟨0, r⟩⟩
+
+/-- The emitted body of a single-loop program at `b0`. This is the definition
+    the `#guard`s below pin and the theorems in `Cert.lean` are about. -/
+def bodyOf (prog : Program) : RecB RegFile Exit :=
+  (emitBody (blocks b0 prog) (theLoop prog)).getD dummyBody
+
+theorem bodyOf_eq {prog : Program} (h : wellFormed (theLoop prog).header
+    (intervalLoop (blocks b0 prog) (theLoop prog).backEdge) = true) :
+    emitBody (blocks b0 prog) (theLoop prog) = some (bodyOf prog) := by
+  simp [bodyOf, emitBody, h]
 
 /-- Did the pass continue, and do the registers satisfy `p`? -/
 private def continues (o : RegFile ⊕ Exit) (p : RegFile → Bool) : Bool :=
@@ -364,11 +384,6 @@ private def regs (x10 : Word) (x11 : Word := 0) (x12 : Word := 0) : RegFile :=
     | .x11 => x11
     | .x12 => x12
     | _ => 0
-
-private def bodyOf (prog : Program) : RecB RegFile Exit :=
-  match emitAll b0 prog with
-  | [(_, some r)] => r
-  | _ => ⟨fun r => .inr ⟨0, r⟩⟩
 
 -- Both loops are in scope.
 #guard (emitAll b0 countdownProg).all (·.2.isSome)

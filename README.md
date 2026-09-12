@@ -12,7 +12,7 @@ The namespace is `Decomp`; the method is Magnus Myreen's, from
 *Formal verification of machine-code programs* (UCAM-CL-TR-765).
 
 ```
-lake build            # 99 jobs, zero warnings
+lake build            # 101 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -34,6 +34,8 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Extract.CFG` | The extractor's first step, computable and untrusted: basic blocks, loops, exits, and which loop rule each loop wants — including whether its exits converge through the compiler's pure-jump blocks. Pinned by `#guard` to the two hand-proved programs. |
 | `Decomp.Extract.Body` | The extractor's second step: from a loop's blocks, the `RecB` over a register file — each block's ALU instructions evaluated symbolically with `execInstrBr`'s semantics (`execPlain_regs` says so), the branch conditions as the `inl`/`inr` split, exits resolved through pure-jump blocks. Refuses memory, calls, syscalls and nested loops. Pinned by `#guard` to the hand-written `countdown` and `find` bodies. |
 | `Decomp.Extract.Cert` | The extractor's third step, and the first theorem *about* the extractor: every body it emits is sound (`emitBody_sound`). A run of the emitted body is a `cpsTotal` from the header to the exit it returns, over a register-file coupling, with no side condition. Built from two generic leaves proved straight from the stepper's semantics; the two facts it asks about a program are `Bool`s a caller decides. Instantiated on `Countdown` and `FindIndex`. |
+| `Decomp.Extract.Reproduce` | The extractor reproduces the hand certificate: the emitted body for `FindIndex` simulates the hand-written `find` under the coupling `x10 = i, x11 = stop, x12 = e` (`runsTo_lift`), and `find_found` / `find_exhausted` at the emitter's base fall out of `findIndex_extracted` in a few lines each. The hand proof's five leaves and three compositions are not needed. |
+| `Decomp.Extract.SumDown` | A second function nobody wrote by hand: a four-instruction countdown that sums `x10, …, 1` into `x11`. No leaf is framed and no loop rule is applied; the machine certificate is `emitBody_sound` at the program, two equations are read off the emitted body, and an induction on the counter gives the machine theorem for every representable `n`, on both backends. |
 | `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec, and `Cert.Refines.seq` shows `Cert.seq` refines `Nres.bind`. |
 | `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; the two glued back to back (`CountdownThenFind`) and refined against a `bind` of two specs; and the SP1-vs-ZisK ecall regression. |
 

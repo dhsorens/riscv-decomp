@@ -136,7 +136,7 @@ structure Block where
   entry : Word
   instrs : List Instr
   succ : Succ
-  deriving Repr
+  deriving Repr, DecidableEq
 
 /-- The block's last address. -/
 def Block.last (b : Block) : Word := b.entry + BitVec.ofNat 64 (4 * (b.instrs.length - 1))
@@ -249,7 +249,7 @@ structure LoopInfo where
   shape : LoopShape
   /-- Some block in the loop ends in `JALR`; recovery is incomplete here. -/
   hasIndirect : Bool
-  deriving Repr
+  deriving Repr, DecidableEq
 
 def classify (bs : List Block) (e : BackEdge) : LoopInfo :=
   let loop := intervalLoop bs e
