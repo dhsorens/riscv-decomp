@@ -32,7 +32,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 98 jobs, zero warnings. `scripts/check-axioms.sh`: 844
+`lake build`: 99 jobs, zero warnings. `scripts/check-axioms.sh`: 953
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -167,7 +167,7 @@ without the machine -- is tested only when someone does so.
 *Acceptance (met):* for one function, an abstract-correctness proof and a
 refinement proof that are two separate, independently checkable theorems.
 
-### 6. The extractor · large · research risk · M0, M1 landed
+### 6. The extractor · large · research risk · M0–M2 landed
 
 The hand proofs are the point being tested, not the destination. A
 proof-producing RV64 decompiler in Lean metaprogramming — per region, emit a
@@ -197,22 +197,41 @@ the generator's own model of the instructions, not about any program.
   (`execPlain`, with `execInstrBr`'s semantics: `execPlain_regs`), the branch
   conditions as the `inl`/`inr` split (`branchTaken`, `nextPc`:
   `terminal_step`), exits resolved through pure-jump blocks so the label is
-  what `cpsTotal_loopB_exits` wants. The body is total by construction and
-  `wellFormed` is the static check that it never reaches its fallback;
-  `emitBody` refuses loads, stores, syscalls, `JALR`, calls and nested loops.
-  On `Countdown` and `FindIndex` (with and without the `JAL`) the emitted
-  bodies agree with the hand-written `countdown` and `find` on every checked
-  input. Not done: the `*W` and M-extension ALU forms (a longer `match`, no
-  new idea), and a proof that `wellFormed` implies the fallback is unreachable
-  (M2 will need it per loop anyway).
-- **M2 — the certificate.** Emit `hCont` / `hExit` as goals and discharge them
-  by leaf transfer and framing — the composition `FindIndexMachine.lean` does
-  by hand, mechanised. The `side` condition comes out as the collected
-  representability facts. The coupling is now fixed by M1: `I r` is the
-  separating conjunction of `x ↦ᵣ r x` over the registers the loop touches,
-  and `Q y` the same at `y.regs`, with `exitOf := Exit.label`.
+  what `cpsTotal_loopB_exits` wants. The body is total by construction; its
+  fallback (`inr` at the current pc) is sound but useless, and `wellFormed`
+  is the static check that no path reaches it. `emitBody` refuses loads,
+  stores, syscalls, `JALR`, calls and nested loops. On `Countdown` and
+  `FindIndex` (with and without the `JAL`) the emitted bodies agree with the
+  hand-written `countdown` and `find` on every checked input. Not done: the
+  `*W` and M-extension ALU forms (a longer `match`, no new idea).
+- **M2 — the certificate · done, and stronger than planned.** The plan was
+  to emit `hCont` / `hExit` per loop and discharge them by a tactic. What
+  landed is one theorem, `Decomp.Extract.Cert.emitBody_sound`: *every* body
+  the emitter produces is sound, on any `PlainAgree` stepper, with no
+  per-loop proof at all. A run of the emitted body that returns `y` is a
+  `cpsTotal` from the header to `y.label`, taking the coupling `regsAssn rs`
+  (the separating conjunction of `x ↦ᵣ r.get x` over a register list `rs`
+  that covers the footprint) from `x` to `y.regs`. The side condition is
+  `True` — the register file is an exact abstraction, so the
+  representability facts the hand proofs carried were the price of `Nat`,
+  not of the machine. Two generic leaves (`cpsWithin_alu`,
+  `cpsWithin_terminal`) are proved straight from `execInstrBr` and upstream's
+  frame-preserving register update, then the walk is followed by induction
+  (`stepBlock_sound`, `runPass_sound`, `resolveJumps_sound`). The theorem asks
+  two `Bool`s of the program — `passOk` (loop blocks resident and within the
+  coupling) and `jumpsOk` (pure-jump blocks resident and honest) — which the
+  three instances (`countdown_extracted`, `findIndex_extracted`,
+  `findIndex_div_extracted`) discharge by `decide` at a fixed base. Not done:
+  a `Cert` for it (`Cert.exit_` is one label, an extracted exit is
+  `Exit.label`; item 7's `exit_ : β → Word` now has its consumer), and a
+  lemma that `blocks base prog` always satisfies the two `Bool`s against
+  `CodeReq.ofProg base prog`, which is what would make the instances
+  base-generic instead of `decide`d at `0x1000`.
 - **M3 — acceptance.** The extractor reproduces `FindIndex`'s certificate
-  automatically, then handles a second function nobody wrote by hand.
+  automatically — which now means: relate `RunsTo (bodyOf findIndexProg)` to
+  `RunsTo (find stop e)` under the coupling `x10 = i, x11 = stop, x12 = e`, so
+  that `find_found` / `find_exhausted` fall out of `findIndex_extracted` —
+  then handle a second function nobody wrote by hand.
 
 *Known risk:* computed branches defeat CFG recovery. M0 reports them
 (`LoopInfo.hasIndirect`); plan hand-written `cpsNBranchWithin` certificates at
@@ -240,7 +259,8 @@ to `base + 16`, `find_exhausted_div` to `base + 12`, nothing joining them. The
 four-instruction program) and is never executed; a three-instruction `cr` would
 be the stricter test of "nothing between them in the region" and has not been
 done. `Cert` still has one `exit_`; a certificate for divergent exits would
-carry `exit_ : β → Word`, and nothing has asked.
+carry `exit_ : β → Word`. The extractor now asks: `Extract/Cert.lean`'s
+`emitBody_sound` has an exit label per output and no `Cert` to sit in.
 
 *Acceptance (met):* either the judgement, or a written argument that the
 convergence requirement is the right one. The argument above — the requirement

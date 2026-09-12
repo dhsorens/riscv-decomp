@@ -12,7 +12,7 @@ The namespace is `Decomp`; the method is Magnus Myreen's, from
 *Formal verification of machine-code programs* (UCAM-CL-TR-765).
 
 ```
-lake build            # 98 jobs, zero warnings
+lake build            # 99 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -33,6 +33,7 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
 | `Decomp.Extract.CFG` | The extractor's first step, computable and untrusted: basic blocks, loops, exits, and which loop rule each loop wants — including whether its exits converge through the compiler's pure-jump blocks. Pinned by `#guard` to the two hand-proved programs. |
 | `Decomp.Extract.Body` | The extractor's second step: from a loop's blocks, the `RecB` over a register file — each block's ALU instructions evaluated symbolically with `execInstrBr`'s semantics (`execPlain_regs` says so), the branch conditions as the `inl`/`inr` split, exits resolved through pure-jump blocks. Refuses memory, calls, syscalls and nested loops. Pinned by `#guard` to the hand-written `countdown` and `find` bodies. |
+| `Decomp.Extract.Cert` | The extractor's third step, and the first theorem *about* the extractor: every body it emits is sound (`emitBody_sound`). A run of the emitted body is a `cpsTotal` from the header to the exit it returns, over a register-file coupling, with no side condition. Built from two generic leaves proved straight from the stepper's semantics; the two facts it asks about a program are `Bool`s a caller decides. Instantiated on `Countdown` and `FindIndex`. |
 | `Decomp.Refine` | Where L2 meets L3: `Cert.Refines c spec R` says the extracted function refines an abstract spec, `Cert.refines_sound` desugars that plus the certificate to a `cpsTotal` triple stated against the spec, and `Cert.Refines.seq` shows `Cert.seq` refines `Nres.bind`. |
 | `Decomp.Examples.*` | Worked instances: a countdown loop driven end to end on both backends from one proof; an index search with a mid-body `break` and a bottom exit, the two `inr` branches of one `RecB` body discharged against code, then refined against `searchSpec` in two independent theorems; the two glued back to back (`CountdownThenFind`) and refined against a `bind` of two specs; and the SP1-vs-ZisK ecall regression. |
 
@@ -103,8 +104,9 @@ definition here keeps working. Two consequences worth knowing:
 - `#guard` evaluates, so a file whose checks *run* a definition needs a
   private `meta import` of the module defining it -- transitively, down to
   whatever the interpreter has to call. The files whose `#guard`s run
-  upstream code are `Sp1/HintRead.lean` (three modules), `Extract/CFG.lean`
-  and `Extract/Body.lean` (two each); they import code, not names.
+  upstream code are `Sp1/HintRead.lean` (three modules) and `Extract/CFG.lean`,
+  `Extract/Body.lean`, `Extract/Cert.lean` (two each); they import code, not
+  names.
 
 ## Genericity, and what is deliberately *not* abstracted
 
