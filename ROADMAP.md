@@ -12,10 +12,10 @@ Read it today rather than from memory — nothing here is frozen.
 The L2 layer works end to end. A loop whose trip count depends on its input can
 be stated and proved with no fuel and no variant, on either backend, from one
 proof (`Decomp.Examples.CountdownMachine`). The instruction leaves and the byte
-regions are shaped for compiled code -- byte and wide stores into a region,
-loads through one base register at an immediate offset, a source and a
-destination region separated by `**` -- but no compiler-emitted consumer lives
-in this repository yet.
+regions are shaped for compiled code -- byte and wide stores into a region and
+byte and wide loads out of it, through one base register at an immediate
+offset, a source and a destination region separated by `**` -- but no
+compiler-emitted consumer lives in this repository yet.
 
 Both loop rules now have a consumer in this repository: `Countdown` drives the
 header-guarded `cpsTotal_loop`, and `FindIndex` drives `cpsTotal_loopB` through
@@ -32,7 +32,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 101 jobs, zero warnings. `scripts/check-axioms.sh`: 1046
+`lake build`: 102 jobs, zero warnings. `scripts/check-axioms.sh`: 1079
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -62,7 +62,7 @@ region would be the first *real* consumer, and would owe all three.
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
 
-### 2. The same-register keystone family is one instruction wide · leaf half landed
+### 2. The same-register keystone family is one instruction wide · done
 
 `LBU rd, off(rd)` needed its own leaf all the way down — `lbu_same_on`,
 `bytesRegionOn_lbu_same_at`, `bytesRegionSp1_lbu_same_at` — because the ordinary
@@ -74,17 +74,22 @@ The *leaf* half is done: `LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` have
 mirror of its three-atom sibling with one `pull_second` fewer. They are
 statements with no consumer.
 
-The *region* half — the six `_same_at` keystones this item is named for — is
-**not**: there is no `bytesRegionOn_lw_same_at` and so on, because there is no
-ordinary `bytesRegionOn_lw_at` for it to mirror. The byte-region keystones are
-`LBU`/`SB` only, and a wide load at a region index needs the `packBytes`
-algebra run the other way from `Region/Wide.lean`'s stores. That is the real
-work behind this item, and it is open. `Region/Bytes.lean` says which layer is
-complete and which is not.
+The *region* half is now done too, in `Decomp/Region/WideLoad.lean`. The
+obstacle was that there was no ordinary `bytesRegionOn_lw_at` for a
+`_same_at` form to mirror: the byte-region keystones were `LBU`/`SB` only,
+and a wide load at a region index needs the `packBytes` algebra run the other
+way from `Region/Wide.lean`'s stores. That algebra is one bit-level lemma,
+`packBytes_window` (the `8n`-bit field at byte offset `r` of a packed chunk is
+the packing of `(chunk.drop r).take n`; `extractWord32_packBytes` and
+`extractHalfword_packBytes` are its two cases). On it sit the six ordinary
+keystones `bytesRegionOn_{lw,lwu,lh,lhu,lb,ld}_at` and the six `_same_at`
+twins, each the mirror `Bytes.lean`'s `LBU` pair showed; `Region/Sp1.lean`
+instantiates all twelve. `Region/Bytes.lean`'s note now says the family is
+complete at every layer.
 
-*Acceptance:* the six missing `_same_at` region forms, and a note in
-`Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
-leaf twins and the note; the region forms remain.
+*Acceptance (met):* the six `_same_at` region forms, and the note in
+`Region/Bytes.lean`. Still true, and said there: every same-register form
+except `LBU`'s is a statement with no consumer in this repository.
 
 ### 3. The `OffText` discharges are restated per guest · lemmas landed, no consumer
 

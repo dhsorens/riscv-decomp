@@ -5,8 +5,9 @@
 
   `bytesRegionSp1 base bs` is `bs` laid across `memIsSp1` cells, so a region
   on the heap is inhabited where a `bytesRegion` (ZisK cells) is not. The two
-  keystones from `Decomp/Region/Bytes.lean` and the wide stores from
-  `Decomp/Region/Wide.lean` are instantiated with the step facts
+  keystones from `Decomp/Region/Bytes.lean`, the wide stores from
+  `Decomp/Region/Wide.lean` and the wide loads and same-register forms from
+  `Decomp/Region/WideLoad.lean` are instantiated with the step facts
   `Decomp/Leaf/Sp1Mem.lean` uses: a valid containing dword puts the access in
   SP1's addressable space, and a store additionally needs its bytes off the
   code window.
@@ -14,7 +15,7 @@
 
 module
 
-public import Decomp.Region.Wide
+public import Decomp.Region.WideLoad
 public import Decomp.Leaf.Sp1Mem
 
 @[expose] public section
@@ -209,5 +210,208 @@ theorem bytesRegionSp1_sb_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
         exact ⟨isValidMemAddrSp1_of_alignToDword
             (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
           noCodeAt_of_codeWithin (by decide) hinv hoff⟩)
+
+/-! ## Wide loads, and the same-register family
+
+The loads of `Decomp/Region/WideLoad.lean` on SP1: a valid containing dword
+puts the access in SP1's addressable space, and the index's alignment gives
+the access's. No `OffText`: loads do not touch the code window. Then the six
+`_same_at` forms, closing the family `bytesRegionSp1_lbu_same_at` opened. -/
+
+/-- `lw rd, off(rs1)` at 4-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lw_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi4 : 4 ∣ i) (hlt : i + 4 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LW rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ ((packBytes ((bs.drop i).take 4)).truncate 32).signExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lw_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr halign hi4 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lw, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned4_add_ofNat halign hi4 hover⟩)
+
+/-- `lwu rd, off(rs1)` at 4-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lwu_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi4 : 4 ∣ i) (hlt : i + 4 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LWU rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ ((packBytes ((bs.drop i).take 4)).truncate 32).zeroExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lwu_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr halign hi4 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lwu, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned4_add_ofNat halign hi4 hover⟩)
+
+/-- `lh rd, off(rs1)` at 2-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lh_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi2 : 2 ∣ i) (hlt : i + 2 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LH rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ ((packBytes ((bs.drop i).take 2)).truncate 16).signExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lh_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr halign hi2 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lh, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned2_add_ofNat halign hi2 hover⟩)
+
+/-- `lhu rd, off(rs1)` at 2-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lhu_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi2 : 2 ∣ i) (hlt : i + 2 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LHU rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ ((packBytes ((bs.drop i).take 2)).truncate 16).zeroExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lhu_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr halign hi2 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lhu, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned2_add_ofNat halign hi2 hover⟩)
+
+/-- `lb rd, off(rs1)` at any index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lb_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hlt : i < bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LB rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ (bs[i]'hlt).signExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lb_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr halign hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lb, hrs1, hptr]
+        exact isValidMemAddrSp1_of_alignToDword
+          (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv))
+
+/-- `ld rd, off(rs1)` at one whole cell, the region's own `i` of an SP1 region. -/
+theorem bytesRegionSp1_ld_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (hi8 : 8 ∣ i) (hlt : i + 8 ≤ bs.length) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LD rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ packBytes ((bs.drop i).take 8)) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_ld_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr hi8 hlt
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_ld, hrs1, hptr]
+        exact hv)
+
+/-- `lw rd, off(rd)` at 4-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lw_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi4 : 4 ∣ i) (hlt : i + 4 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LW rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ ((packBytes ((bs.drop i).take 4)).truncate 32).signExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lw_same_at rd regionBase ptr offset base bs i hrd hptr halign hi4 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lw, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned4_add_ofNat halign hi4 hover⟩)
+
+/-- `lwu rd, off(rd)` at 4-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lwu_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi4 : 4 ∣ i) (hlt : i + 4 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LWU rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ ((packBytes ((bs.drop i).take 4)).truncate 32).zeroExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lwu_same_at rd regionBase ptr offset base bs i hrd hptr halign hi4 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lwu, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned4_add_ofNat halign hi4 hover⟩)
+
+/-- `lh rd, off(rd)` at 2-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lh_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi2 : 2 ∣ i) (hlt : i + 2 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LH rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ ((packBytes ((bs.drop i).take 2)).truncate 16).signExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lh_same_at rd regionBase ptr offset base bs i hrd hptr halign hi2 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lh, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned2_add_ofNat halign hi2 hover⟩)
+
+/-- `lhu rd, off(rd)` at 2-aligned index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lhu_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hi2 : 2 ∣ i) (hlt : i + 2 ≤ bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LHU rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ ((packBytes ((bs.drop i).take 2)).truncate 16).zeroExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lhu_same_at rd regionBase ptr offset base bs i hrd hptr halign hi2 hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lhu, hrs1, hptr, Bool.and_eq_true]
+        exact ⟨isValidMemAddrSp1_of_alignToDword
+            (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv),
+          isAligned2_add_ofNat halign hi2 hover⟩)
+
+/-- `lb rd, off(rd)` at any index `i` of an SP1 region. -/
+theorem bytesRegionSp1_lb_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (halign : regionBase.toNat % 8 = 0) (hlt : i < bs.length)
+    (hover : regionBase.toNat + i < 2 ^ 64) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LB rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ (bs[i]'hlt).signExtend 64) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_lb_same_at rd regionBase ptr offset base bs i hrd hptr halign hlt hover
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_lb, hrs1, hptr]
+        exact isValidMemAddrSp1_of_alignToDword
+          (by rw [alignToDword_add_ofNat_of_aligned halign hover]; exact hv))
+
+/-- `ld rd, off(rd)` at one whole cell, the region's own `i` of an SP1 region. -/
+theorem bytesRegionSp1_ld_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat) (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (hi8 : 8 ∣ i) (hlt : i + 8 ≤ bs.length) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LD rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ packBytes ((bs.drop i).take 8)) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_ld_same_at rd regionBase ptr offset base bs i hrd hptr hi8 hlt
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h) (by
+        rw [memOkSp1_ld, hrs1, hptr]
+        exact hv)
 
 end Decomp
