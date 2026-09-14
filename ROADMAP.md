@@ -32,7 +32,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 102 jobs, zero warnings. `scripts/check-axioms.sh`: 1079
+`lake build`: 102 jobs, zero warnings. `scripts/check-axioms.sh`: 1080
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -91,7 +91,7 @@ complete at every layer.
 `Region/Bytes.lean`. Still true, and said there: every same-register form
 except `LBU`'s is a statement with no consumer in this repository.
 
-### 3. The `OffText` discharges are restated per guest · lemmas landed, no consumer
+### 3. The `OffText` discharges are restated per guest · **done**, consumer landed downstream
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
@@ -102,12 +102,21 @@ on the bound the region keystones already carry. `offText_of_above` asks for a
 word-aligned `hi`, which every real `.text` end has; `offText_of_above'` is the
 raw form.
 
-No guest's instances have yet been stated as one-line corollaries of these, so
-the acceptance is unmet: the `example`s next to the lemmas are illustrations at
-made-up addresses, not a consumer.
+A guest's instances now are. `zip-2005-asm`'s `Guest/Text.lean` states
+`offText_of_belowText` through `offText_region_below`, and `heapBase_offText`
+and `offText_of_heap` through `offText_of_above` — three multi-line
+`Nat`/`BitVec` arguments replaced by three applications, against this
+repository at `bbc6d30`. (That project's PR #44, open at the time of writing;
+the item is marked done on the strength of the corollaries existing, and is
+worth re-reading if that PR changes shape.) Its `offText_of_isValidDwordAccess`
+stays hand-proved, and should: it is about ZisK's zone map, not about a window.
 
-*Acceptance:* `offText_of_below` and `offText_of_above` here, with a guest's
-instances as one-line corollaries. *Landed so far:* the lemmas here.
+What the consumer confirmed, which the `example`s here could not: the two
+directions really do partition a realistic image. The guest's stack discharges
+the first disjunct and its heap the second, and nothing needed a third case.
+
+*Acceptance (met):* `offText_of_below` and `offText_of_above` here, with a
+guest's instances as one-line corollaries.
 
 ### 4. The halting half of the reject path · rules landed, no consumer
 
