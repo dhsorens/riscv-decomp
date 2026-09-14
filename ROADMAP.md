@@ -315,8 +315,9 @@ here so nobody reads the gap as an oversight.
 
 ## Owed adversarial passes
 
-`asm-adversary` sets `disable-model-invocation`, so only the user can run it. Two
-statements were landed with the pass outstanding, both additive and reversible:
+`asm-adversary` sets `disable-model-invocation`, so only the user can run it.
+Three statements were landed with the pass outstanding, all additive and
+reversible:
 
 - **`RecB`'s shape.** Getting the datatype wrong would be expensive to undo.
   `Rec`, `TerminatesIn` and `cpsTotal_loop` are untouched beside it, so it can be
@@ -335,3 +336,9 @@ statements were landed with the pass outstanding, both additive and reversible:
   but it is a *definition of accept*, and the whole reject-path argument rests on
   it. Worth attacking directly: is there a state that satisfies it and is not a
   halt, or a real halt it excludes?
+- **`emitBody_sound`** (`Extract/Cert.lean`). The one theorem the extractor's
+  machine content rests on: M3's triples are all this theorem applied to an
+  abstract `RunsTo`. Additive and reversible. The seam: `regsOf` against the
+  operands each constructor reads and writes; a missed operand fails
+  `aluOf_congr` / `aluOf_dest`, not the theorem. Named as the thing to attack
+  by the review of PR #21; the pass has not run.
