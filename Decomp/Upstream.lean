@@ -11,8 +11,9 @@
   `public import Decomp.Upstream`. The one kind of exception is a private
   `meta import` of a specific upstream module, needed where a `#guard` *runs*
   an upstream definition -- currently `Sp1/HintRead.lean` (three modules) and
-  `Extract/CFG.lean`, `Extract/Body.lean`, `Extract/Cert.lean` (two each);
-  those import code, not names, and re-export nothing.
+  `Extract/CFG.lean`, `Extract/Body.lean` (two each); those import code, not
+  names, and re-export nothing. A file whose program facts are `decide`d
+  needs none: that is kernel evaluation, not the interpreter.
 
   Deliberately omitted, because they are legacy files and nothing here uses
   them: `RiscvZkvm.Rv64.Logic.CPSCall`, `RiscvZkvm.Rv64.Logic.MemSat`, `RiscvZkvm.Rv64.Logic.CodeReqExtents`, `RiscvZkvm.Rv64.Logic.WP.Examples`, `RiscvZkvm.Rv64.Logic.Tactics.WP`. If one is needed, the upstream ask is to put `module` at the top

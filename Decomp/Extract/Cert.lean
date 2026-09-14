@@ -74,10 +74,6 @@ public import Decomp.Loop
 public import Decomp.Leaf.Core
 public import Decomp.Leaf.Sp1Step
 -- The checks at the bottom evaluate the emission on the two example programs.
-meta import RiscvZkvm.Rv64.Basic
-meta import RiscvZkvm.Rv64.Instructions
-meta import Decomp.Extract.CFG
-meta import Decomp.Extract.Body
 
 @[expose] public section
 

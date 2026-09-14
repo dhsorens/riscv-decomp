@@ -107,7 +107,7 @@ definition here keeps working. Two consequences worth knowing:
   private `meta import` of the module defining it -- transitively, down to
   whatever the interpreter has to call. The files whose `#guard`s run
   upstream code are `Sp1/HintRead.lean` (three modules) and `Extract/CFG.lean`,
-  `Extract/Body.lean`, `Extract/Cert.lean` (two each); they import code, not
+  `Extract/Body.lean` (two each); they import code, not
   names.
 
 ## Genericity, and what is deliberately *not* abstracted
