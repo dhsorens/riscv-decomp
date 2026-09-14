@@ -12,7 +12,7 @@ The namespace is `Decomp`; the method is Magnus Myreen's, from
 *Formal verification of machine-code programs* (UCAM-CL-TR-765).
 
 ```
-lake build            # 101 jobs, zero warnings
+lake build            # 102 jobs, zero warnings
 scripts/check-axioms.sh
 scripts/check-forbidden-tactics.sh
 ```
@@ -28,7 +28,7 @@ scripts/check-forbidden-tactics.sh
 | `Decomp.Loop` | The loop rules. `cpsTotal_loop` for a header-guarded loop; `cpsTotal_loopB` for a body that may return — which covers an early `break`, a mid-body exit, and a bottom-guarded loop with no rotation; `cpsTotal_loopB_exits` for exits that land on different labels, the exit address chosen by the output. `cpsTotal_loop_of_loopB` proves the second subsumes the first. |
 | `Decomp.Certificate` | TR-765's L2 output contract as a structure: `(fn, pre, sound)`, with the rider that the caller must discharge `pre` made structural rather than documentary. |
 | `Decomp.Leaf.*` | One-instruction specs. `Core` transfers upstream's ZisK leaves to any `PlainAgree` stepper (the eighteen non-memory constructors, no restatement). `Mem` re-proves the twelve load/store forms with the **cell as a parameter**, plus the seven `rd = rs1` load twins (`*_same_on`), whose two-atom footprint framing cannot fake. `Sp1Step`/`Sp1Text`/`Sp1Mem` are SP1's instances, including the code-window invariant a store guard needs. |
-| `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the same-register load form, and the wide `SW`/`SD`/`SH` stores. |
+| `Decomp.Region.*` | Byte regions: `bytesRegionOn`, the `LBU`/`SB` keystones at an index and at an immediate offset, the wide `SW`/`SD`/`SH` stores, the wide `LB`/`LH`/`LHU`/`LW`/`LWU`/`LD` loads (`WideLoad`, with the load-side `packBytes` algebra), and the same-register twin of every load. All instantiated on SP1. |
 | `Decomp.Sp1.*` | SP1's ABI as triples: `HALT`, `COMMIT`, `COMMIT_DEFERRED_PROOFS`, `HINT_LEN`, `HINT_READ`. |
 | `Decomp.Reject` | Showing a region *cannot* accept. The trapping half, on the observation that distinguishes a halt from a trap; and the halting half, `Accepted := SyscallHalted ∧ a0 = 0`, refuted from a halt triple that pins `a0` or from a step-preserved invariant. |
 | `Decomp.Extract.CFG` | The extractor's first step, computable and untrusted: basic blocks, loops, exits, and which loop rule each loop wants — including whether its exits converge through the compiler's pure-jump blocks. Pinned by `#guard` to the two hand-proved programs. |

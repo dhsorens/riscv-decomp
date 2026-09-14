@@ -219,25 +219,24 @@ theorem bytesRegionOn_lbu_same_at (rd : Reg) (regionBase ptr : Word)
     (fun _ hp => by xperm_hyp hp)
     (cpsWithin_frameR (front ** rest) (pcFree_sepConj hf hr) lbu)
 
-/-! ## The same-register family, and how far it reaches
+/-! ## The same-register family, complete at every layer
 
-At the **leaf** layer the family is complete: every load form has an
-`rd = rs1` twin -- `ld_same_on`, `lw_same_on`, `lwu_same_on`, `lh_same_on`,
-`lhu_same_on`, `lb_same_on`, `lbu_same_on` in `Decomp/Leaf/Mem.lean`, each
-instantiated at SP1 as `*_same_sp1Mem`. Each is the three-atom proof with one
-`pull_second` fewer, and each is a statement with no consumer yet except
-`LBU`'s.
+At the **leaf** layer every load form has an `rd = rs1` twin -- `ld_same_on`,
+`lw_same_on`, `lwu_same_on`, `lh_same_on`, `lhu_same_on`, `lb_same_on`,
+`lbu_same_on` in `Decomp/Leaf/Mem.lean`, each instantiated at SP1 as
+`*_same_sp1Mem`. Each is the three-atom proof with one `pull_second` fewer.
 
-At the **region** layer it is still one instruction wide, and so is the
-*ordinary* keystone family: `bytesRegionOn_lbu_at` / `_sb_at` are the only
-byte-indexed load/store forms, because a byte region hands out one byte per
-index and the `extractByte_packBytes` algebra says exactly that. The six
-region `_same_at` forms `ROADMAP.md` item 2 asks for do not exist, and cannot
-be written as mirrors until their ordinary `_at` siblings do: a wide *load* at
-a region index (`LW` at byte `4k`, say) needs the `packBytes` algebra run in
-the other direction from `Region/Wide.lean`'s stores. That is the open half of
-the item. When it lands, each `_same_at` form is the ten-line mirror this
-section's `LBU` pair shows. -/
+At the **region** layer the family is complete too. This file has the `LBU`
+pair; `Decomp/Region/WideLoad.lean` has the other six load forms at a region
+index -- `bytesRegionOn_{ld,lw,lwu,lh,lhu,lb}_at` -- and their `_same_at`
+twins, each the mirror of its ordinary sibling that this section's `LBU` pair
+shows. What made them possible is the load-side splice algebra
+(`packBytes_window`: the `8n`-bit field at byte offset `r` of a packed chunk is
+the packing of `(chunk.drop r).take n`), the converse of the store side's
+`packBytes_setBytes_*`. `Decomp/Region/Sp1.lean` instantiates all of them.
+
+What remains true: every same-register form except `LBU`'s is a statement
+with no consumer in this repository. -/
 
 /-- **`SB` writes byte `i` of the region**: `bs` becomes `bs.set i (v_data.truncate 8)`. -/
 theorem bytesRegionOn_sb_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
