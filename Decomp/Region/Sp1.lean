@@ -149,6 +149,37 @@ theorem bytesRegionSp1_sd_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
         rw [memOkSp1_sd, hrs1, hptr, Bool.and_eq_true]
         exact ⟨hv, noCodeAt_of_codeWithin (by decide) hinv hoff⟩)
 
+/-- `LD rd, off(rs1)` reading the doubleword at an 8-aligned index of an SP1
+    region. No `OffText`: a load cannot overwrite code, so the only question
+    `memOkSp1` asks is the cell's own validity, and that is in the resource. -/
+theorem bytesRegionSp1_ld_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat)
+    (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (hi8 : 8 ∣ i) (hlt : i + 8 ≤ bs.length) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LD rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionSp1 regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ packBytes ((bs.drop i).take 8)) **
+        bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_ld_at rd rs1 regionBase ptr vOld offset base bs i hrd hptr hi8 hlt
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h)
+        (by rw [memOkSp1_ld, hrs1, hptr]; exact hv)
+
+/-- `LD rd, off(rd)` at an 8-aligned region index on SP1. -/
+theorem bytesRegionSp1_ld_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat)
+    (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (hi8 : 8 ∣ i) (hlt : i + 8 ≤ bs.length) :
+    cpsWithin (Sp1Text lo hi) 1 base (base + 4) (CodeReq.singleton base (.LD rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionSp1 regionBase bs)
+      ((rd ↦ᵣ packBytes ((bs.drop i).take 8)) ** bytesRegionSp1 regionBase bs) :=
+  bytesRegionOn_ld_same_at rd regionBase ptr offset base bs i hrd hptr hi8 hlt
+    fun _ _ hfetch hrs1 hv =>
+      stepSp1_mem_of_memOk hfetch rfl (fun _ _ h => Instr.noConfusion h)
+        (by rw [memOkSp1_ld, hrs1, hptr]; exact hv)
+
 /-! ## Byte accesses at an immediate offset
 
 A compiled `memcpy` tail copies with `LBU rd, 1(rs1)` and `SB rs1, rs2, 1`, i.e. through

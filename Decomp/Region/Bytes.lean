@@ -228,16 +228,22 @@ instantiated at SP1 as `*_same_sp1Mem`. Each is the three-atom proof with one
 `pull_second` fewer, and each is a statement with no consumer yet except
 `LBU`'s.
 
-At the **region** layer it is still one instruction wide, and so is the
-*ordinary* keystone family: `bytesRegionOn_lbu_at` / `_sb_at` are the only
-byte-indexed load/store forms, because a byte region hands out one byte per
-index and the `extractByte_packBytes` algebra says exactly that. The six
-region `_same_at` forms `ROADMAP.md` item 2 asks for do not exist, and cannot
-be written as mirrors until their ordinary `_at` siblings do: a wide *load* at
-a region index (`LW` at byte `4k`, say) needs the `packBytes` algebra run in
-the other direction from `Region/Wide.lean`'s stores. That is the open half of
-the item. When it lands, each `_same_at` form is the ten-line mirror this
-section's `LBU` pair shows. -/
+At the **region** layer the family is two instructions wide, and so is the
+*ordinary* keystone family it mirrors. `bytesRegionOn_lbu_at` / `_sb_at` here
+are the byte-indexed forms, because a byte region hands out one byte per index
+and the `extractByte_packBytes` algebra says exactly that. `LD` joined them in
+`Region/Wide.lean` (`bytesRegionOn_ld_at`, `_ld_same_at`) -- at an 8-aligned
+index it needs no algebra at all, since it reads one whole cell and the cell's
+value *is* its `packBytes` chunk, which is why it could be written before the
+rest.
+
+What `ROADMAP.md` item 2 still asks for is the four narrow loads: `LW`, `LWU`,
+`LH`, `LHU` and `LB` at a sub-doubleword region index, each of which does need
+the `packBytes` algebra run in the other direction from `Region/Wide.lean`'s
+stores -- an *extract* out of the containing cell, where the stores splice into
+it. Their `_same_at` twins cannot be written as mirrors until the ordinary `_at`
+siblings exist. When they land, each `_same_at` form is the ten-line mirror this
+section's `LBU` pair and `Wide.lean`'s `LD` pair both show. -/
 
 /-- **`SB` writes byte `i` of the region**: `bs` becomes `bs.set i (v_data.truncate 8)`. -/
 theorem bytesRegionOn_sb_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)

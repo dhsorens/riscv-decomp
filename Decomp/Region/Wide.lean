@@ -237,6 +237,97 @@ theorem bytesRegionOn_sd_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
     (fun _ hp => by xperm_hyp hp)
     (cpsWithin_frameR (front ** rest) (pcFree_sepConj hf hrst) sd)
 
+/-! ## The wide load
+
+`ROADMAP.md` item 2 says a wide load at a region index "needs the `packBytes`
+algebra run in the other direction from this file's stores". That is true of
+`LW`, `LH` and their unsigned twins, and it is **not** true of `LD` at an
+8-aligned index, for the same reason `bytesRegionOn_sd_at` needs neither
+`halign` nor `hover`: the region's cells sit at `regionBase + 8k`, the load
+reads one of them whole, and the value is the cell's own `packBytes` chunk.
+No splice, no extract, no alignment side condition on the base.
+
+So `LD` lands here and the narrower loads stay open. `LD` is also the one that
+matters first: it is the load RV64 emits for every reload of a spilled
+doubleword and for every limb of a multiprecision value. -/
+
+/-- **`LD` reads the 8 bytes at index `i`.** `i` is 8-aligned, so the load
+    takes one whole cell and the result is that cell's `packBytes` chunk.
+
+    The mirror of `bytesRegionOn_sd_at`, and like it free of `halign`/`hover`:
+    the cell's validity is read out of the resource rather than derived from
+    the base's alignment. -/
+theorem bytesRegionOn_ld_at (rd rs1 : Reg) (regionBase ptr vOld : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat)
+    (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (hi8 : 8 ∣ i) (hlt : i + 8 ≤ bs.length)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LD rd rs1 offset) → s.getReg rs1 = ptr →
+      valid (regionBase + BitVec.ofNat 64 i) = true →
+      st.next s = some (execInstrBr s (.LD rd rs1 offset))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LD rd rs1 offset))
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ vOld) ** bytesRegionOn valid regionBase bs)
+      ((rs1 ↦ᵣ ptr) ** (rd ↦ᵣ packBytes ((bs.drop i).take 8)) **
+        bytesRegionOn valid regionBase bs) := by
+  have hi_eq : 8 * (i / 8) = i := Nat.mul_div_cancel' hi8
+  obtain ⟨front, rest, hf, hrst, heq⟩ :=
+    bytesRegionOn_dword_at (valid := valid) regionBase bs (i / 8) (by omega)
+  rw [hi_eq] at heq
+  have ld := ld_on (st := st) rd rs1 ptr vOld (packBytes ((bs.drop i).take 8)) offset base hrd
+    (fun s hinv hfetch hreg hv => hst s hinv hfetch hreg (hptr ▸ hv))
+  rw [hptr] at ld
+  rw [heq]
+  exact cpsWithin_weaken
+    (fun _ hp => by xperm_hyp hp)
+    (fun _ hp => by xperm_hyp hp)
+    (cpsWithin_frameR (front ** rest) (pcFree_sepConj hf hrst) ld)
+
+/-- **`LD rd, off(rd)`** -- the same-register form, and the first member of
+    `ROADMAP.md` item 2's region family to exist. The footprint is genuinely
+    two atoms rather than three: after the load the pointer is gone, so the
+    postcondition cannot keep `rs1 ↦ᵣ ptr` and framing cannot fake it. -/
+theorem bytesRegionOn_ld_same_at (rd : Reg) (regionBase ptr : Word)
+    (offset : BitVec 12) (base : Word) (bs : List (BitVec 8)) (i : Nat)
+    (hrd : rd ≠ .x0)
+    (hptr : ptr + signExtend12 offset = regionBase + BitVec.ofNat 64 i)
+    (hi8 : 8 ∣ i) (hlt : i + 8 ≤ bs.length)
+    (hst : ∀ s, st.inv s → s.code s.pc = some (.LD rd rd offset) → s.getReg rd = ptr →
+      valid (regionBase + BitVec.ofNat 64 i) = true →
+      st.next s = some (execInstrBr s (.LD rd rd offset))) :
+    cpsWithin st 1 base (base + 4) (CodeReq.singleton base (.LD rd rd offset))
+      ((rd ↦ᵣ ptr) ** bytesRegionOn valid regionBase bs)
+      ((rd ↦ᵣ packBytes ((bs.drop i).take 8)) ** bytesRegionOn valid regionBase bs) := by
+  have hi_eq : 8 * (i / 8) = i := Nat.mul_div_cancel' hi8
+  obtain ⟨front, rest, hf, hrst, heq⟩ :=
+    bytesRegionOn_dword_at (valid := valid) regionBase bs (i / 8) (by omega)
+  rw [hi_eq] at heq
+  have ld := ld_same_on (st := st) rd ptr (packBytes ((bs.drop i).take 8)) offset base hrd
+    (fun s hinv hfetch hreg hv => hst s hinv hfetch hreg (hptr ▸ hv))
+  rw [hptr] at ld
+  rw [heq]
+  exact cpsWithin_weaken
+    (fun _ hp => by xperm_hyp hp)
+    (fun _ hp => by xperm_hyp hp)
+    (cpsWithin_frameR (front ** rest) (pcFree_sepConj hf hrst) ld)
+
+/-- **The round trip**: what `bytesRegionOn_sd_at` writes at index `i` is what
+    `bytesRegionOn_ld_at` reads back there.
+
+    Needed by neither proof above, and that is the point: it is the check that
+    the two keystones agree about what a cell holds. A store lemma whose
+    payload and a load lemma whose result disagreed would typecheck
+    individually and only fail when someone sequenced them.
+
+    Note it needs no alignment. `8 ∣ i` is what makes each keystone hit a
+    single *cell*; the list-level fact that the eight bytes read at `i` are the
+    eight written at `i` is true at any index. -/
+theorem packBytes_readback_setBytes_dword (bs : List (BitVec 8)) (v : Word) (i : Nat)
+    (hlt : i + 8 ≤ bs.length) :
+    packBytes (((setBytes bs i (dwordBytes v)).drop i).take 8) = v := by
+  rw [setBytes_drop_of_ge (dwordBytes v) bs i i (Nat.le_refl i), Nat.sub_self,
+    setBytes_take_of_le (dwordBytes v) (bs.drop i) 0 8 (by simp),
+    ← packBytes_setBytes_dword _ v (by rw [List.length_take, List.length_drop]; omega)]
+
 /-! ## Ownership with forgotten contents -/
 
 /-- Ownership of the `n` bytes at `base` with unspecified contents. Upstream's

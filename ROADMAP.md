@@ -32,7 +32,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 101 jobs, zero warnings. `scripts/check-axioms.sh`: 1046
+`lake build`: 101 jobs, zero warnings. `scripts/check-axioms.sh`: 1051
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -62,7 +62,7 @@ region would be the first *real* consumer, and would owe all three.
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
 
-### 2. The same-register keystone family is one instruction wide · leaf half landed
+### 2. The same-register keystone family is two instructions wide · leaf half landed, `LD` region form landed
 
 `LBU rd, off(rd)` needed its own leaf all the way down — `lbu_same_on`,
 `bytesRegionOn_lbu_same_at`, `bytesRegionSp1_lbu_same_at` — because the ordinary
@@ -74,19 +74,35 @@ The *leaf* half is done: `LB`, `LH`, `LHU`, `LW`, `LWU` and `LD` have
 mirror of its three-atom sibling with one `pull_second` fewer. They are
 statements with no consumer.
 
-The *region* half — the six `_same_at` keystones this item is named for — is
-**not**: there is no `bytesRegionOn_lw_same_at` and so on, because there is no
-ordinary `bytesRegionOn_lw_at` for it to mirror. The byte-region keystones are
-`LBU`/`SB` only, and a wide load at a region index needs the `packBytes`
-algebra run the other way from `Region/Wide.lean`'s stores. That is the real
-work behind this item, and it is open. `Region/Bytes.lean` says which layer is
-complete and which is not.
+The *region* half is partly done. **`LD` landed** — `bytesRegionOn_ld_at` and
+`bytesRegionOn_ld_same_at` in `Region/Wide.lean`, with `bytesRegionSp1_ld_at` /
+`_ld_same_at` as the SP1 instances — and it landed first because at an
+8-aligned index it needs no `packBytes` algebra whatsoever: it reads one whole
+cell, and the value is that cell's own chunk. Like `bytesRegionOn_sd_at`, which
+it mirrors, it carries neither `halign` nor `hover`. That was not obvious from
+this item's previous wording, which put every wide load behind the same
+algebra.
 
-*Acceptance:* the six missing `_same_at` region forms, and a note in
+The four narrow loads do need it: `LW`, `LWU`, `LH`, `LHU` and `LB` at a
+sub-doubleword region index each need an *extract* out of the containing cell,
+the other direction from `Region/Wide.lean`'s splicing stores. There is no
+ordinary `bytesRegionOn_lw_at` yet, so there is nothing for a
+`bytesRegionOn_lw_same_at` to mirror. That is the real remaining work.
+`Region/Bytes.lean` says which layer is complete and which is not.
+
+`packBytes_readback_setBytes_dword` is the check that the new load and the
+existing `SD` agree about what a cell holds — needed by neither proof, which
+is the point: they could disagree and both still typecheck.
+
+**Which half:** the rule and its SP1 instance are here; the consumer is
+downstream (`zip-2005-asm`, for a heap region).
+
+*Acceptance:* the missing `_same_at` region forms, and a note in
 `Region/Bytes.lean` saying the family is complete. *Landed so far:* the six
-leaf twins and the note; the region forms remain.
+leaf twins, the `LD` region pair and both notes; the four narrow loads and
+their twins remain.
 
-### 3. The `OffText` discharges are restated per guest · lemmas landed, no consumer
+### 3. The `OffText` discharges are restated per guest · **done**, consumer landed downstream
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack
@@ -97,12 +113,16 @@ on the bound the region keystones already carry. `offText_of_above` asks for a
 word-aligned `hi`, which every real `.text` end has; `offText_of_above'` is the
 raw form.
 
-No guest's instances have yet been stated as one-line corollaries of these, so
-the acceptance is unmet: the `example`s next to the lemmas are illustrations at
-made-up addresses, not a consumer.
+A guest's instances now are. `zip-2005-asm`'s `Guest/Text.lean` states
+`offText_of_belowText` through `offText_region_below`, and `heapBase_offText`
+and `offText_of_heap` through `offText_of_above` — three multi-line
+`Nat`/`BitVec` arguments replaced by three applications, at this repository's
+`bbc6d30` (that project's PR #44, open at the time of writing). Its
+`offText_of_isValidDwordAccess` stays hand-proved and should: it is about
+ZisK's zone map, not about a window.
 
-*Acceptance:* `offText_of_below` and `offText_of_above` here, with a guest's
-instances as one-line corollaries. *Landed so far:* the lemmas here.
+*Acceptance (met):* `offText_of_below` and `offText_of_above` here, with a
+guest's instances as one-line corollaries.
 
 ### 4. The halting half of the reject path · rules landed, no consumer
 
