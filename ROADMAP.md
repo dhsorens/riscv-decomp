@@ -91,7 +91,7 @@ complete at every layer.
 `Region/Bytes.lean`. Still true, and said there: every same-register form
 except `LBU`'s is a statement with no consumer in this repository.
 
-### 3. The `OffText` discharges are restated per guest · **done**, consumer landed downstream
+### 3. The `OffText` discharges are restated per guest · **done** pending `zip-2005-asm` #44
 
 A store leaf takes `OffText lo hi addr w`. For a typical image that is free in
 both directions — a heap above `.text` discharges the second disjunct, a stack

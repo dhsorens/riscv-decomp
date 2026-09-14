@@ -239,9 +239,12 @@ theorem bytesRegionOn_sd_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
 
 /-! ## Store, then load
 
-`Region/WideLoad.lean` gives the loads and this file gives the stores, and the
-two families were written months apart against the same cells. The lemma below
-is the check that they agree about what a cell holds.
+`Region/WideLoad.lean` gives the loads and this file gives the stores. They
+were written at different times against the same cells — the stores in
+`zip-2005-asm` before the extraction, the loads here on 2026-09-14 — and
+from opposite directions of the `packBytes` algebra: the stores splice into a
+cell, the loads extract out of one. The lemma below is the check that they
+agree about what a cell holds.
 
 It is needed by no proof in either file, and that is why it is here rather than
 in a proof: a store whose payload and a load whose result disagreed would
