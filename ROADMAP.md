@@ -32,7 +32,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 99 jobs, zero warnings. `scripts/check-axioms.sh`: 953
+`lake build`: 101 jobs, zero warnings. `scripts/check-axioms.sh`: 1046
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -167,7 +167,7 @@ without the machine -- is tested only when someone does so.
 *Acceptance (met):* for one function, an abstract-correctness proof and a
 refinement proof that are two separate, independently checkable theorems.
 
-### 6. The extractor · large · research risk · M0–M2 landed
+### 6. The extractor · large · research risk · M0–M3 landed
 
 The hand proofs are the point being tested, not the destination. A
 proof-producing RV64 decompiler in Lean metaprogramming — per region, emit a
@@ -199,11 +199,13 @@ the generator's own model of the instructions, not about any program.
   `terminal_step`), exits resolved through pure-jump blocks so the label is
   what `cpsTotal_loopB_exits` wants. The body is total by construction; its
   fallback (`inr` at the current pc) is sound but useless, and `wellFormed`
-  is the static check that no path reaches it. `emitBody` refuses loads,
-  stores, syscalls, `JALR`, calls and nested loops. On `Countdown` and
+  is the static check meant to keep every path off it. `emitBody` refuses
+  loads, stores, syscalls, `JALR`, calls and nested loops. On `Countdown` and
   `FindIndex` (with and without the `JAL`) the emitted bodies agree with the
   hand-written `countdown` and `find` on every checked input. Not done: the
-  `*W` and M-extension ALU forms (a longer `match`, no new idea).
+  `*W` and M-extension ALU forms (a longer `match`, no new idea), and
+  `wellFormed = true → no run reaches the fallback`, which is unproved; a
+  false positive costs a sound, useless certificate.
 - **M2 — the certificate · done, and stronger than planned.** The plan was
   to emit `hCont` / `hExit` per loop and discharge them by a tactic. What
   landed is one theorem, `Decomp.Extract.Cert.emitBody_sound`: *every* body
@@ -227,11 +229,30 @@ the generator's own model of the instructions, not about any program.
   lemma that `blocks base prog` always satisfies the two `Bool`s against
   `CodeReq.ofProg base prog`, which is what would make the instances
   base-generic instead of `decide`d at `0x1000`.
-- **M3 — acceptance.** The extractor reproduces `FindIndex`'s certificate
-  automatically — which now means: relate `RunsTo (bodyOf findIndexProg)` to
-  `RunsTo (find stop e)` under the coupling `x10 = i, x11 = stop, x12 = e`, so
-  that `find_found` / `find_exhausted` fall out of `findIndex_extracted` —
-  then handle a second function nobody wrote by hand.
+- **M3 — acceptance · done, at a fixed base.** `Decomp.Extract.Reproduce`
+  relates `RunsTo (bodyOf findIndexProg)` to `RunsTo (find stop e)` under the
+  coupling `x10 = i, x11 = stop, x12 = e` (`runsTo_lift`, an induction on the
+  hand body's derivation with one case per equation of the emitted body), and
+  `find_found` / `find_exhausted` at the emitter's base then fall out of
+  `findIndex_extracted` in a few lines each (`find_found_extracted`,
+  `find_exhausted_extracted`): same program, same coupling `I`, same
+  conclusion, none of the hand proof's five leaves. The side condition
+  `i + 1 < 2 ^ 64` reappears because relating a `Nat` abstraction to a
+  register file needs `BitVec.ofNat` injective on the values in play; the
+  extracted certificate itself has none. `Decomp.Extract.SumDown` is the
+  second function nobody wrote by hand — `BEQ x10, x0; ADD x11, x11, x10;
+  ADDI x10, x10, -1; JAL` — with no `SumDownMachine.lean`: the machine
+  certificate is `emitBody_sound` at the program (`sumDown_extracted`), two
+  equations are read off the emitted body (`sd_exit`, `sd_cont`), an
+  induction on the counter gives `sd_runsTo`, and `sumDown_correct` is the
+  corollary, for every representable `n` on both backends. Not done: the
+  results are at the emitter's base `0x1000` where the hand theorems are for
+  every base (the base-generic `blocks` lemma from M2's list is what would
+  lift them); the equations of the emitted body are still read off by hand
+  from the emitted function — proved by running the walk symbolically block
+  by block, which is the step a `simp` set for single-loop programs would
+  automate; and the M2 list stands (a `Cert` with `exit_ : β → Word`, the
+  `*W` and M-extension ALU forms).
 
 *Known risk:* computed branches defeat CFG recovery. M0 reports them
 (`LoopInfo.hasIndirect`); plan hand-written `cpsNBranchWithin` certificates at

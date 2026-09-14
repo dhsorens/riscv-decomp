@@ -38,6 +38,8 @@ public import Decomp.Refine
 public import Decomp.Extract.CFG
 public import Decomp.Extract.Body
 public import Decomp.Extract.Cert
+public import Decomp.Extract.Reproduce
+public import Decomp.Extract.SumDown
 public import Decomp.Examples.Sp1Ecall
 public import Decomp.Examples.Countdown
 public import Decomp.Examples.CountdownMachine
