@@ -237,6 +237,35 @@ theorem bytesRegionOn_sd_at (rs1 rs2 : Reg) (regionBase ptr v_data : Word)
     (fun _ hp => by xperm_hyp hp)
     (cpsWithin_frameR (front ** rest) (pcFree_sepConj hf hrst) sd)
 
+/-! ## Store, then load
+
+`Region/WideLoad.lean` gives the loads and this file gives the stores. They
+were written at different times against the same cells — the stores in
+`zip-2005-asm` before the extraction, the loads here on 2026-09-14 — and
+from opposite directions of the `packBytes` algebra: the stores splice into a
+cell, the loads extract out of one. The lemma below is the check that they
+agree about what a cell holds.
+
+It is needed by no proof in either file, and that is why it is here rather than
+in a proof: a store whose payload and a load whose result disagreed would
+typecheck separately and fail only when someone sequenced them, which is the
+two-lemma form of this library's characteristic failure. -/
+
+/-- **The round trip**: what `bytesRegionOn_sd_at` writes at index `i` is what
+    `bytesRegionOn_ld_at` reads back there.
+
+    Note what it does *not* need: alignment. `8 ∣ i` is what makes each
+    keystone address a single cell; that the eight bytes read at `i` are the
+    eight written at `i` is a list fact, true at any index. Stating it with the
+    alignment hypothesis would have hidden which half of each keystone's side
+    condition is doing which job. -/
+theorem packBytes_readback_setBytes_dword (bs : List (BitVec 8)) (v : Word) (i : Nat)
+    (hlt : i + 8 ≤ bs.length) :
+    packBytes (((setBytes bs i (dwordBytes v)).drop i).take 8) = v := by
+  rw [setBytes_drop_of_ge (dwordBytes v) bs i i (Nat.le_refl i), Nat.sub_self,
+    setBytes_take_of_le (dwordBytes v) (bs.drop i) 0 8 (by simp),
+    ← packBytes_setBytes_dword _ v (by rw [List.length_take, List.length_drop]; omega)]
+
 /-! ## Ownership with forgotten contents -/
 
 /-- Ownership of the `n` bytes at `base` with unspecified contents. Upstream's
