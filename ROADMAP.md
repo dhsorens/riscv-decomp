@@ -315,13 +315,24 @@ what was committed. Fixing it is an upstream change to `PartialState`.
 *Acceptance:* an assertion that names the commit log, and a `COMMIT` triple that
 says what was appended.
 
-### 9. Toolchain: `riscv-zkvm` v4.33.0 → v4.33.1 · upstream ask
+### 9. Toolchain: off `riscv-zkvm`'s Lean v4.33.0 · upstream ask
 
 This library pins Lean v4.33.0 because `riscv-zkvm` does
-(`fixedToolchain = true`). Anything that wants to share a toolchain with a
-Mathlib-based project on v4.33.1 needs upstream to move first. Issue #3 is the
-ask and stays open: it is not ours to close, and `lake-manifest.json` pins a
-resolved sha, so an upstream move does not reach us without `lake update`.
+(`fixedToolchain = true`), on both `sp1-backend` and `main`. Anything that wants
+to share a toolchain with a Mathlib-based project needs upstream to move first.
+
+The target is no longer v4.33.1, which is what issue #3 asked for when it was
+filed. Checked 2026-09-18: `Verified-zkEVM/clean` is on v4.33.1 but
+`Verified-zkEVM/CompPoly` has moved to v4.34.0, so v4.33.1 is the minimum
+useful move and v4.34.0 is the one that covers both consumers. The coordination
+problem widened rather than closing. `fixedToolchain` is not what holds the pin
+down — it exists for `lean-sail`'s ≥ v4.32 do-elaborator, which either
+candidate satisfies.
+
+We are not behind upstream: `sp1-backend` HEAD is the rev `lake-manifest.json`
+already pins, and nobody has asked upstream yet. Issue #3 is the ask and stays
+open — it is not ours to close, and the manifest pins a resolved sha, so an
+upstream move does not reach us without `lake update riscv-zkvm`.
 
 ### 10. Structural rules are added on demand
 
