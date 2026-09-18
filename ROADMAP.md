@@ -61,6 +61,8 @@ region would be the first *real* consumer, and would owe all three.
 
 *Acceptance (met):* a proof in which two distinct `inr` branches of one `body`
 are discharged. *Remaining:* the same against compiler output over a region.
+Issue #1 asked for the acceptance criterion and was closed when `FindIndex`
+met it; this paragraph is the record of what it did not cover.
 
 ### 2. The same-register keystone family is one instruction wide · done
 
@@ -145,7 +147,9 @@ formatting code, which nothing here makes cheap.
 *Acceptance (met, by the convention recorded in README "Trust"):* a judgement
 composing with `cpsSyscallHalt` that concludes "this region cannot halt with
 `a0 = 0`" from block-local facts. *Remaining:* the adversary pass on
-`SyscallHalted`, which `Accepted` rests on, and a consumer.
+`SyscallHalted`, which `Accepted` rests on, and a consumer. Issue #2 asked for
+`not_accepted_of_invariant` by its statement and was closed when it landed;
+this paragraph is the record of the two halves it left.
 
 ### 5. The refinement layer (L3) · landed, one and two regions
 
@@ -311,11 +315,24 @@ what was committed. Fixing it is an upstream change to `PartialState`.
 *Acceptance:* an assertion that names the commit log, and a `COMMIT` triple that
 says what was appended.
 
-### 9. Toolchain: `riscv-zkvm` v4.33.0 → v4.33.1 · upstream ask
+### 9. Toolchain: off `riscv-zkvm`'s Lean v4.33.0 · upstream ask
 
 This library pins Lean v4.33.0 because `riscv-zkvm` does
-(`fixedToolchain = true`). Anything that wants to share a toolchain with a
-Mathlib-based project on v4.33.1 needs upstream to move first.
+(`fixedToolchain = true`), on both `sp1-backend` and `main`. Anything that wants
+to share a toolchain with a Mathlib-based project needs upstream to move first.
+
+The target is no longer v4.33.1, which is what issue #3 asked for when it was
+filed. Checked 2026-09-18: `Verified-zkEVM/clean` is on v4.33.1 but
+`Verified-zkEVM/CompPoly` has moved to v4.34.0, so v4.33.1 is the minimum
+useful move and v4.34.0 is the one that covers both consumers. The coordination
+problem widened rather than closing. `fixedToolchain` is not what holds the pin
+down — it exists for `lean-sail`'s ≥ v4.32 do-elaborator, which either
+candidate satisfies.
+
+We are not behind upstream: `sp1-backend` HEAD is the rev `lake-manifest.json`
+already pins, and nobody has asked upstream yet. Issue #3 is the ask and stays
+open — it is not ours to close, and the manifest pins a resolved sha, so an
+upstream move does not reach us without `lake update riscv-zkvm`.
 
 ### 10. Structural rules are added on demand
 
@@ -325,6 +342,60 @@ are fixed-arity WP frontends (`join2/3/4`, `weakenPosts2/3/4`,
 — a rule with no consumer is a statement, not a capability — and it is recorded
 here so nobody reads the gap as an oversight.
 
+### 11. The limb / field-element vocabulary · nothing landed · unblocked
+
+Numbered last to keep the existing numbers stable — several Lean docstrings
+cite them — not because it is the most expensive. Since item 2 landed it is one
+of the cheapest things here.
+
+The default triples give a flat functional view of memory, so a bignum library
+has to define its own array assertion and hand-prove triples that make
+instructions seem to operate over the array directly. `zip-2005-asm`'s **M4**
+asks for that vocabulary — `field_elem`, `limbs`, `array` as separation-logic
+assertions — and by the dividing rule (an assertion that names `Assertion`,
+`Word` and a validity predicate, and names no ZIP and no binary, is this
+library's, exactly as `bytesRegionOn` is) most of it belongs here. What stays
+downstream is the instantiation: a concrete modulus, the guest's heap base, the
+`hnrAsm` instance.
+
+Nothing is landed. What it wants, in the order it gets cheaper:
+
+- `limbsToNat : List Word → Nat`, little-endian over `Word.toNat` rather than
+  over bytes. Going through limbs avoids relating a byte region to a `Nat`
+  directly, which is a disjointness-of-`|||` argument this design never needs.
+- `limbRegionOn valid base ws := bytesRegionOn valid base (ws.flatMap dwordBytes)`
+  — defined *through* `bytesRegionOn`, not as a fresh `**`-chain.
+- `limbRegionOn_ld_at` and `limbRegionOn_sd_at`, each a keystone plus two list
+  lemmas. This is the half item 2 was blocking: the keystones a limb array
+  needs at index `k` are `bytesRegionOn_ld_at` and `bytesRegionOn_sd_at` at byte
+  index `8k`, both aligned-case and carrying no `halign`/`hover`, and both now
+  exist (`Region/WideLoad.lean`, `Region/Wide.lean`). The `ByteOps` fact left
+  over is `packBytes (dwordBytes v) = v`; `packBytes_readback_setBytes_dword`
+  (`Region/Wide.lean`) is already the sequenced store-then-load form.
+- `fieldElemOn valid p base n : Nat → Assertion`, an existential over the limb
+  list carrying `x < p` **inside** the assertion. That is what distinguishes a
+  field element from an integer that happens to fit, it is the invariant every
+  arithmetic triple would otherwise restate, and it is the shape a `Rep`
+  downstream wants.
+
+The thing to get right is non-vacuity. `fieldElemOn` is an existential
+assertion, and an existential assertion with no witness is this library's
+characteristic failure: a true theorem that says nothing. Whatever lands owes a
+satisfiable instance at a concrete `p`, `n` and address, the way
+`Guest/Heap.lean` does downstream for `memIsSp1`.
+
+`montgomery` and `point_affine` from M4's list are **not** in scope: both are
+consumers of the above rather than peers of it, and neither has a consumer
+until `zip-2005-asm` reaches M5, which is Phase II and has not started.
+
+*Acceptance:* `limbsToNat`, `limbRegionOn` through `bytesRegionOn`, the two
+`limbRegionOn_*_at` keystones, the round trip in both directions
+(`limbsToNat (natToLimbs n x) = x` for representable `x`, and
+`natToLimbs ws.length (limbsToNat ws) = ws`), and a satisfiable instance.
+
+*Coordination:* issue #27 is the design, and is open for exactly this reason —
+this repository and `lean-refine` independently built an L3 in the same week
+because neither session could see the other. Say there before writing it.
 ---
 
 ## Owed adversarial passes
