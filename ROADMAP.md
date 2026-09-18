@@ -16,6 +16,8 @@ regions are shaped for compiled code -- byte and wide stores into a region and
 byte and wide loads out of it, through one base register at an immediate
 offset, a source and a destination region separated by `**` -- but no
 compiler-emitted consumer lives in this repository yet.
+`Decomp/Region/Limbs.lean` adds the limb and field-element layer on top of
+those keystones (item 11), also without a consumer.
 
 Both loop rules now have a consumer in this repository: `Countdown` drives the
 header-guarded `cpsTotal_loop`, and `FindIndex` drives `cpsTotal_loopB` through
@@ -32,7 +34,7 @@ two specs, and against a looser spec that admits several answers. Item 5 has
 the details; what it still lacks is a second project taking the abstract half
 without the machine.
 
-`lake build`: 102 jobs, zero warnings. `scripts/check-axioms.sh`: 1080
+`lake build`: 103 jobs, zero warnings. `scripts/check-axioms.sh`: 1112
 declarations on the three documented axioms. (The move to the module system
 took 28 compiler-generated `match_*` matchers out of the census; they are
 internal under `module` and carry no proof of their own.)
@@ -342,60 +344,83 @@ are fixed-arity WP frontends (`join2/3/4`, `weakenPosts2/3/4`,
 — a rule with no consumer is a statement, not a capability — and it is recorded
 here so nobody reads the gap as an oversight.
 
-### 11. The limb / field-element vocabulary · nothing landed · unblocked
+### 11. The limb / field-element vocabulary · vocabulary landed, no consumer
 
 Numbered last to keep the existing numbers stable — several Lean docstrings
-cite them — not because it is the most expensive. Since item 2 landed it is one
-of the cheapest things here.
+cite them — not because it is the most expensive.
 
 The default triples give a flat functional view of memory, so a bignum library
 has to define its own array assertion and hand-prove triples that make
 instructions seem to operate over the array directly. `zip-2005-asm`'s **M4**
-asks for that vocabulary — `field_elem`, `limbs`, `array` as separation-logic
-assertions — and by the dividing rule (an assertion that names `Assertion`,
-`Word` and a validity predicate, and names no ZIP and no binary, is this
-library's, exactly as `bytesRegionOn` is) most of it belongs here. What stays
-downstream is the instantiation: a concrete modulus, the guest's heap base, the
-`hnrAsm` instance.
+asks for that vocabulary, and by the dividing rule (an assertion that names
+`Assertion`, `Word` and a validity predicate, and names no ZIP and no binary,
+is this library's, exactly as `bytesRegionOn` is) most of it belongs here. What
+stays downstream is the instantiation: a concrete modulus, the guest's heap
+base, the `hnrAsm` instance.
 
-Nothing is landed. What it wants, in the order it gets cheaper:
+`Decomp/Region/Limbs.lean` is that vocabulary. `limbsToNat` is the abstract
+value, little-endian over `Word.toNat` rather than over bytes — going through
+limbs never needs `(packBytes chunk).toNat = Σ bᵢ · 256ⁱ`, a
+disjointness-of-`|||` argument the byte route would owe. `limbRegionOn` is
+defined *through* `bytesRegionOn` on `ws.flatMap dwordBytes`, as an `abbrev`
+so `xperm` can still see the `**` chain. The two keystones,
+`limbRegionOn_ld_at` and `limbRegionOn_sd_at`, are item 2's wide-region
+keystones at byte index `8k` plus two list lemmas (`limbBytes_window`,
+`limbBytes_setBytes`) and `packBytes_dwordBytes`; the store's postcondition is
+`List.set` on the limbs, not a byte splice. Neither carries `halign` or
+`hover`, and that is inherited rather than arranged: `8 ∣ 8k` is discharged
+here and an 8-aligned wide access hits one of the region's own cells exactly.
 
-- `limbsToNat : List Word → Nat`, little-endian over `Word.toNat` rather than
-  over bytes. Going through limbs avoids relating a byte region to a `Nat`
-  directly, which is a disjointness-of-`|||` argument this design never needs.
-- `limbRegionOn valid base ws := bytesRegionOn valid base (ws.flatMap dwordBytes)`
-  — defined *through* `bytesRegionOn`, not as a fresh `**`-chain.
-- `limbRegionOn_ld_at` and `limbRegionOn_sd_at`, each a keystone plus two list
-  lemmas. This is the half item 2 was blocking: the keystones a limb array
-  needs at index `k` are `bytesRegionOn_ld_at` and `bytesRegionOn_sd_at` at byte
-  index `8k`, both aligned-case and carrying no `halign`/`hover`, and both now
-  exist (`Region/WideLoad.lean`, `Region/Wide.lean`). The `ByteOps` fact left
-  over is `packBytes (dwordBytes v) = v`; `packBytes_readback_setBytes_dword`
-  (`Region/Wide.lean`) is already the sequenced store-then-load form.
-- `fieldElemOn valid p base n : Nat → Assertion`, an existential over the limb
-  list carrying `x < p` **inside** the assertion. That is what distinguishes a
-  field element from an integer that happens to fit, it is the invariant every
-  arithmetic triple would otherwise restate, and it is the shape a `Rep`
-  downstream wants.
+The round trip is proved in both directions with no machine in it:
+`limbsToNat_natToLimbs_of_lt` for representable `x` and
+`natToLimbs_limbsToNat` at a list's own length. `limbsToNat_lt` is the capacity
+bound, which says the honest thing about a too-small `n`: `fieldElemOn` is
+empty above `2 ^ (64 * n)`, so a caller picks `n` with `p ≤ 2 ^ (64 * n)`.
 
-The thing to get right is non-vacuity. `fieldElemOn` is an existential
-assertion, and an existential assertion with no witness is this library's
-characteristic failure: a true theorem that says nothing. Whatever lands owes a
-satisfiable instance at a concrete `p`, `n` and address, the way
-`Guest/Heap.lean` does downstream for `memIsSp1`.
+`fieldElemOn` carries `x < p` **inside** the assertion, which is what
+distinguishes a field element from an integer that happens to fit and is the
+invariant every arithmetic triple would otherwise restate. Being an
+existential over a limb list, it is exactly the shape that can be true and
+empty, so it ships with a witness: `probe_limbRegionOn` and
+`probe_fieldElemOn` build a two-limb element at `0x1000` under a concrete
+modulus and prove the assertion of a concrete `PartialState`, and
+`fieldElemOn_nonvacuous` is the `∃ h` a caller reads. It is pinned by
+construction — wrong cell contents or a flipped limb order fail to typecheck,
+and the `#guard`s on `limbsToNat` fail if the endianness is ever inverted.
 
-`montgomery` and `point_affine` from M4's list are **not** in scope: both are
-consumers of the above rather than peers of it, and neither has a consumer
-until `zip-2005-asm` reaches M5, which is Phase II and has not started.
+**Which half this is: the statement half.** Nothing in this repository loads
+or stores a limb. The keystones have no consumer, and until something drives
+them the claim that instructions "operate over the array directly" is
+untested against real code.
 
-*Acceptance:* `limbsToNat`, `limbRegionOn` through `bytesRegionOn`, the two
-`limbRegionOn_*_at` keystones, the round trip in both directions
-(`limbsToNat (natToLimbs n x) = x` for representable `x`, and
-`natToLimbs ws.length (limbsToNat ws) = ws`), and a satisfiable instance.
+*Two residuals, both named in the file header:*
 
-*Coordination:* issue #27 is the design, and is open for exactly this reason —
-this repository and `lean-refine` independently built an L3 in the same week
-because neither session could see the other. Say there before writing it.
+- **Region satisfiability is still one layer down.** The probe is concrete
+  because the general lemma — every `bytesRegionOn` with valid, non-wrapping
+  cells is satisfiable — needs the region's cell addresses shown pairwise
+  distinct, which is a `bytesRegionOn` fact, not a limb one. Upstream has it
+  (`satWithin_bytesRegion`) for the ZisK cell only and in
+  `RiscvZkvm.Rv64.Logic.MemSat`, a legacy file `Decomp/Upstream.lean`
+  deliberately omits, so a `module` cannot reach it. `anyBytesOn`
+  (`Region/Wide.lean`) has shipped without a witness for the same reason. The
+  upstream ask is `module` at the top of `MemSat.lean`; the local option is to
+  restate the two lemmas generically over `valid`.
+- **`montgomery` and `point_affine`** from M4's list are out of scope: both
+  are consumers of the above rather than peers of it, and neither has a
+  consumer until `zip-2005-asm` reaches M5, which is Phase II and has not
+  started.
+
+*Acceptance (met):* `limbsToNat`, `limbRegionOn` through `bytesRegionOn`, the
+two `limbRegionOn_*_at` keystones, the round trip in both directions, and a
+satisfiable instance. *Remaining:* a consumer, and the general region
+satisfiability lemma above.
+
+*Adversary:* the `asm-adversary` pass on `fieldElemOn`'s footprint is
+**owed** — the skill is user-invocation-only. The statement most worth attacking is
+`fieldElemOn` itself: whether `x < p` inside the assertion is the right place
+for the invariant, and whether the concrete probe's validity predicate is
+doing real work or hiding an address-distinctness assumption.
+
 ---
 
 ## Owed adversarial passes

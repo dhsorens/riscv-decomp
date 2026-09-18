@@ -31,6 +31,7 @@ public import Decomp.Leaf.Sp1Mem
 public import Decomp.Region.Bytes
 public import Decomp.Region.Wide
 public import Decomp.Region.WideLoad
+public import Decomp.Region.Limbs
 public import Decomp.Region.Sp1
 public import Decomp.Sp1.Syscalls
 public import Decomp.Sp1.HintRead
